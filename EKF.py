@@ -9,7 +9,7 @@ The EKF is a recursive algorithm that estimates the state of a system using a se
  The class ExtendedKalmanFilter contains several methods that implement the various steps of the EKF algorithm. The key methods are:
 
 Predict(): This method predicts the state of the system at the current time step, based on the previous estimate of the state and the system dynamics.
- It also computes the Jacobians of the system dynamics and measurement functions.
+It also computes the Jacobians of the system dynamics and measurement functions.
 KGain(): This method computes the Kalman gain, which is used to adjust the state estimate based on the current measurement.
 Innovation(): This method computes the difference between the predicted measurement and the actual measurement, which is used to update the state estimate.
 Correct(): This method updates the state estimate based on the innovation and the Kalman gain.
@@ -25,13 +25,13 @@ from parameters import getJacobian
 
 class ExtendedKalmanFilter:
     def __init__(self, f, m, Q, h, n, R, T):
-        self.f = f
-        self.m = m
-        self.Q = Q
-        self.h = h
-        self.n = n
-        self.R = R
-        self.T = T
+        self.f = f # a function that describes the state transition model, which maps the state at time t-1 to the state at time t.
+        self.m = m # the dimensionality of the state variable.
+        self.Q = Q # the covariance matrix of the process noise.
+        self.h = h # a function that describes the measurement model, which maps the state at time t to the observation at time t.
+        self.n = n # the dimensionality of the observation variable.
+        self.R = R # the covariance matrix of the observation noise.
+        self.T = T # the length of the sequence of observations to be processed.
     # Predict
     def Predict(self, m1x_posterior, m2x_posterior):
         # Predict the 1-st moment of x
@@ -39,7 +39,7 @@ class ExtendedKalmanFilter:
         # Compute the Jacobians
         self.UpdateJacobians(getJacobian(m1x_posterior, self.f), getJacobian(self.m1x_prior, self.h))
         # Predict the 2-nd moment of x
-        self.m2x_prior = torch.bmm(self.batched_F, m2x_posterior)
+        self.m2x_prior = torch.bmm(self.batched_F, m2x_posterior)#This line performs a batch matrix multiplication between the Jacobian matrix (batched_F) and the 2nd order moments of the prior state estimate (m2x_posterior), resulting in a predicted 2nd order moment of the prior state estimate (m2x_prior). The batch matrix multiplication is performed using PyTorch's torch.bmm function.
         self.m2x_prior = torch.bmm(self.m2x_prior, self.batched_F_T) + self.Q
 
         # Predict the 1-st moment of y
@@ -48,7 +48,7 @@ class ExtendedKalmanFilter:
         self.m2y = torch.bmm(self.batched_H, self.m2x_prior)
         self.m2y = torch.bmm(self.m2y, self.batched_H_T) + self.R
 
-    # Compute the Kalman Gain
+    # Compute the Kalman Gain ULI Kt =Σt|t−1 ·H·S−1 t|t−1 .
     def KGain(self, m2x_prior):
         self.KG = torch.bmm(m2x_prior, self.batched_H_T)
         self.KG = torch.bmm(self.KG, torch.inverse(self.m2y))
@@ -57,11 +57,11 @@ class ExtendedKalmanFilter:
         self.KG_array[:, :, :, self.i] = self.KG
         self.i += 1
 
-    # Innovation
+    # Innovation difference ∆yt = yt − ˆyt|t−1.
     def Innovation(self, y):
         self.dy = y - self.m1y
 
-    # Compute Posterior
+    # Compute Posterior ULI where in the article?
     def Correct(self, m1x_prior, m2x_prior):
         # Compute the 1-st posterior moment
         self.m1x_posterior = m1x_prior + torch.bmm(self.KG, self.dy)
@@ -79,7 +79,7 @@ class ExtendedKalmanFilter:
         return self.m1x_posterior, self.m2x_posterior
 
     #########################
-
+    #The EKF linearizes the differentiable f (·) and h(·) in a time-dependent manner using their partial derivative xt|t−1 . Namely, matrices, also known as Jacobians, evaluated at ˆxt−1|t−1 and ˆ ˆ Ft =Jf ˆxt−1|t−1 ˆ Ht =Jhˆxt|t−1,
     def UpdateJacobians(self, F, H):
         self.batched_F = F
         self.batched_F_T = torch.transpose(F, 1, 2)
@@ -88,7 +88,7 @@ class ExtendedKalmanFilter:
 
     def Init_batched_sequence(self, m1x_0_batch, m2x_0_batch):
         self.m1x_0_batch = m1x_0_batch  # [batch_size, m, 1]
-        self.m2x_0_batch = m2x_0_batch  # [batch_size
+        self.m2x_0_batch = m2x_0_batch  # [batch_size, m, m]
 
     ######################
     ### Generate Batch ###

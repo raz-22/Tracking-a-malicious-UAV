@@ -10,7 +10,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
 import torch
 from EKF import ExtendedKalmanFilter
-from parameters import m1x_0, m2x_0, m, n ,f, h, Q_structure, R_structure, T, KG_array
+from parameters import m1x_0, m2x_0, m, n ,f, h, Q_structure, R_structure, T
 
 class Environment:
     def __init__(self):

@@ -241,4 +241,4 @@ def toCartesian(sphe):
     return cart
 
 T = 10  # number of time steps  
-KG_array = torch.zeros([200, m, n, T]) # N_T = len(test_input) ,N_T x m x n x T
+
