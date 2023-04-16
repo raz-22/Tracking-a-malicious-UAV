@@ -10,7 +10,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
 import torch
 from EKF import ExtendedKalmanFilter
-from parameters import m1x_0, m2x_0, m, n ,f, h, Q_structure, R_structure, T
+from parameters import m1x_0, m2x_0, m, n , Q_structure, R_structure
 
 class Environment:
     def __init__(self):
@@ -61,23 +61,29 @@ class Environment:
         z = h # +n_k
 
     def EKF(self):
+                # Define the state transition function
+        def f(x):
+            # TODO: Implement state transition function
+            return x
 
-        # Create instance of ExtendedKalmanFilter
-        ekf = ExtendedKalmanFilter(f=f, m=m, Q=Q_structure, h=h, n=n, R=R_structure, T=T)
-        # Generate a batch of input observations
-        y = torch.randn(2, 1, 10)
-        
-        # Initialize the first moments of the state distribution
-        m1x_0_batch = torch.zeros(2, m, 1)    # [batch_size, m, 1]
-        m1x_0_batch[:, :, 0] = torch.randn(2, m)    # initial state for each sequence in the batch
+        # Define the measurement function
+        def h(x):
+            # TODO: Implement measurement function
+            return x
 
-        # Initialize the second moments of the state distribution
-        m2x_0_batch = torch.zeros(2, m, m)    # [batch_size, m, m]
-        m2x_0_batch[:, :, :] = torch.eye(m)    # assume initial state is perfectly known
+        # Create a new ExtendedKalmanFilter object
+        ekf = ExtendedKalmanFilter(f=f, m=m, Q=Q_structure, h=h, n=n, R=R_structure)
+    
+        # Run the filter for 10 time steps
+        for i in range(10):
+            # Generate a measurement
+            y = torch.randn(1) * 0.1 + torch.matmul(torch.Tensor([[1, 0]]), m1x_0)
 
-        ekf.Init_batched_sequence(m1x_0_batch,m2x_0_batch)
-        # Generate a batch of estimates of the state of the system and its covariance
-        estimates = ekf.GenerateBatch(y)
+            # Update the filter
+            m1x_0, m2x_0 = ekf.Update(y, m1x_0, m2x_0)
+
+            # Print the current state estimate
+            print(f"State estimate at time {i}: {m1x_0.flatten()}")
 
 
     def control_step(self, target_position):
