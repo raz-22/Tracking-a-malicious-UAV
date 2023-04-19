@@ -70,8 +70,8 @@ def f(x, jacobian=False):
 ##################################################
 
 def h(x, target_state,tracker_state,jacobian=False):
-    los = target_state[0] - tracker_state[0]
-    dv = target_state[1] - tracker_state[1]
+    los = target_state[:3, 0] - tracker_state[:3, 0]
+    dv = target_state[3:, 0] - tracker_state[3:, 0]
     delta_x = los[0]
     delta_y = los[1]
     delta_z = los[2]
@@ -82,7 +82,7 @@ def h(x, target_state,tracker_state,jacobian=False):
     azimuth = torch.atan(delta_y / delta_x)
     elevation = torch.atan(delta_z / d)
     # TODO: validate the radian velocity formula
-    radian_velocity = torch.dot(tracker_state[1].transpose(), los) / d
+    radian_velocity = torch.dot(los, dv) / d
 
     doppler_shift = (4 * radian_velocity) / (2 * lamda)
     o = torch.stack((gamma_d_2, azimuth, elevation, doppler_shift))
@@ -90,37 +90,52 @@ def h(x, target_state,tracker_state,jacobian=False):
     if jacobian:
         arg_1 = azimuth
         arg_2 = elevation
-        a = torch.transpose(torch.stack([(torch.cos(arg_1)*torch.sin(arg_2)),(torch.sin(arg_1)*torch.sin(arg_2)),torch.cos(arg_2)]))
+        a = torch.stack(
+            [(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)), torch.cos(arg_2)])
+        if a.shape == (3,):
+            a = a.unsqueeze(1)
+
+
+
         #todo: breakpoint
         jac_h_11 = (gamma/2)*a
         jac_h_42 = (gamma / (2 * lamda)) * a
 
         arg_1 = (azimuth+(torch.pi/2))
-        arg_2 = (torch.pi/2)
-        a = torch.transpose(torch.stack( [(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)),torch.cos(arg_2)]))
+        arg_2 = torch.tensor([0.5])*torch.pi
+
+        a = torch.stack(
+            [(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)), torch.cos(arg_2)])
+        if a.shape == (3,):
+            a = a.unsqueeze(1)
         jac_h_21 = a/(d*torch.sin(elevation))
 
         arg_1 = azimuth
         arg_2 = elevation+(torch.pi / 2)
-        a = torch.transpose(torch.stack([(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)), torch.cos(arg_2)]))
+        a = torch.stack(
+            [(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)), torch.cos(arg_2)])
+        if a.shape == (3,):
+            a = a.unsqueeze(1)
         jac_h_31 = a/d
 
         w = torch.cross(los,dv)/(d**2)
+        if w.shape == (3,):
+            w = w.unsqueeze(1)
         jac_h_41_1 = (gamma/(2*lamda))*((torch.cos(elevation)*w[1])-(torch.sin(azimuth)*torch.sin(elevation)))
         jac_h_41_2 = (gamma / (2 * lamda)) * ((torch.cos(azimuth)*torch.sin(elevation)*w[2])-(torch.cos(elevation)*w[0]))
         jac_h_41_3 = (gamma / (2 * lamda)) * ((torch.sin(azimuth)*torch.sin(elevation)*w[0])-(torch.cos(azimuth)*torch.sin(elevation)*w[1]))
         jac_h_41 = torch.stack([jac_h_41_1, jac_h_41_2, jac_h_41_3])
 
-        zeros_block = torch.zeros(3,2) #jack_h_12,jack_h_22,jack_h_32
+        zeros_block = torch.zeros(3,1) #jack_h_12,jack_h_22,jack_h_32
 
 
-        jac_h_1 = torch.cat((jac_h_11, zeros_block), dim=1)
-        jac_h_2 = torch.cat((jac_h_21, zeros_block), dim=1)
-        jac_h_3 = torch.cat((jac_h_31, zeros_block), dim=1)
-        jac_h_4 =  torch.cat((jac_h_41, jac_h_42), dim=1)
-        jac_top = torch.cat((jac_h_1, jac_h_2), dim=0)
-        jac_bottom = torch.cat((jac_h_3, jac_h_4), dim=0)
-        jac_h =torch.cat((jac_top, jac_bottom), dim=0)
+        jac_h_1 = torch.cat((jac_h_11, zeros_block), dim=0)
+        jac_h_2 = torch.cat((jac_h_21, zeros_block), dim=0)
+        jac_h_3 = torch.cat((jac_h_31, zeros_block), dim=0)
+        jac_h_4 =  torch.cat((jac_h_41, jac_h_42), dim=0)
+        jac_top = torch.cat((jac_h_1, jac_h_2), dim=1)
+        jac_bottom = torch.cat((jac_h_3, jac_h_4), dim=1)
+        jac_h =torch.cat((jac_top, jac_bottom), dim=1)
 
         return o, jac_h
     else:
@@ -149,7 +164,7 @@ if(R_non_diag):
 ##################################
 ### Utils for non-linear cases ###
 ##################################
-def getJacobian(x, g):
+def getJacobian(x,tracker_state , target_state, g):
     """
     Currently, pytorch does not have a built-in function to compute Jacobian matrix
     in a batched manner, so we have to iterate over the batch dimension.
@@ -166,7 +181,10 @@ def getJacobian(x, g):
     # for i in range(1,batch_size):
     #     Jac[i,:,:] = torch.squeeze(autograd.functional.jacobian(g, torch.unsqueeze(x[i,:,:],0)))
     # Method 2: using F, H directly
-    _,Jac = g(x, jacobian=True)
+    if g==h:
+        _,Jac = g(x,target_state , tracker_state, jacobian=True)
+    else:
+        _, Jac = g(x, jacobian=True)
     return Jac
 
 T = 10  # number of time steps  

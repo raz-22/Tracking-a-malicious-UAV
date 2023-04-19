@@ -21,8 +21,9 @@ class Environment:
         self.target = Target()
         self.delta_t = 1
         self.h = h
-        self.Q = self.Init_State_and_Cov_Matrix()
-        self.R = self.Q
+        self.f = f
+        self.Q, self.R = self.Init_Cov_Matrix()
+
 
         # TODO: go over all init parameters
         #self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
@@ -30,10 +31,10 @@ class Environment:
 
 
         # Currently R = self.Q
-        self.Dynamic_Model = SystemModel(f=self.state_matrix, Q=self.Q, h=self.h, R=self.Q,
+        self.Dynamic_Model = SystemModel(f=self.f, Q=self.Q, h=self.h, R=self.Q,
                                          m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
         self.Dynamic_Model.InitSequence(m1x_0, m2x_0)  # x0 and P0
-        self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model)
+        self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model, 'none')
 
     def Init_Cov_Matrix(self):
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
@@ -47,14 +48,18 @@ class Environment:
         top = torch.cat((A, B), dim=1)
         bottom = torch.cat((C, D), dim=1)
         Q = torch.cat((top, bottom), dim=0)
-        return Q
+        #TODO: decide with nir on values
+        diagonal = [1e-5, 1e-5, 1e-6, 1e-6]
+        diagonal_matrix = torch.diag(torch.tensor(diagonal))
+        R = torch.eye(n)*diagonal_matrix
+        return Q, R
 
     def step(self):
 
         self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
         self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state,target_state = self.target.state) #updates Dynamic_Model.x,.y,.x_prev
 
-        self.m1x_posterior, self.m2x_posterior = self.Estimator.Update(self.Dynamic_Model.y)
+        self.m1x_posterior, self.m2x_posterior = self.Estimator.Update(self.Dynamic_Model.y, self.Dynamic_Model.m1x_0, self.Dynamic_Model.m2x_0, tracker_state = self.tracker.state,target_state = self.target.state)
 
         # v, heading, tilt = self.control_step()
         v, heading, tilt = torch.tensor(0.6), torch.tensor(50), torch.tensor(50)

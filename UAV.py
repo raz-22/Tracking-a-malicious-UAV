@@ -7,7 +7,7 @@ class UAV:
     def __init__(self, position=torch.tensor([[0.], [0.], [0.]]), velocity=torch.tensor([[0.], [0.], [0.]])):
         self.current_position = position
         self.current_velocity = velocity
-        self.state = torch.cat(self.current_position, self.current_velocity , dim = 0)
+        self.state = torch.cat((self.current_position, self.current_velocity) , dim = 0)
         self.position_list = [position]
         self.velocity_list = [velocity]
         self.delta_t = 1  # The size of discrete time step in seconds

@@ -135,10 +135,10 @@ class SystemModel:
             ########################
 
             # Save Current State to Trajectory Array
-            self.x[:,1] = torch.squeeze(xt, 1)
+            self.x=xt
 
             # Save Current Observation to Trajectory Array
-            self.y[:,1] = torch.squeeze(yt, 1)
+            self.y = yt.unsqueeze(1)
 
             ################################
             ### Save Current to Previous ###
