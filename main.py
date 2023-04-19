@@ -1,109 +1,61 @@
+import torch
+torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
+from SysModel import SystemModel
+from datetime import datetime
+from parameters import  f, h, m1x_0, m2x_0, m, n, Q_structure, R_structure
 from UAV import *
 import math as mt
-
 import numpy as np
 from numpy import linspace
 from utils import *
-import matplotlib; matplotlib.use("TkAgg")
+import matplotlib;
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
-import torch
 from EKF import ExtendedKalmanFilter
-from parameters import m1x_0, m2x_0, m, n , Q_structure, R_structure
 
 class Environment:
     def __init__(self):
         self.tracker = Tracker()
         self.target = Target()
         self.delta_t = 1
-        # Calculating the state matrix
-        A = np.identity(3)
-        B = np.identity(3) * self.delta_t
-        C = np.zeros((3, 3))
-        D = np.identity(3)
-        top = np.concatenate((A, B), axis=1)
-        bottom = np.concatenate((C, D), axis=1)
+        self.h = h
+        self.Q = self.Init_State_and_Cov_Matrix()
+        self.R = self.Q
+        # TODO: go over all init parameters
+        self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
+        self.sys_model.InitSequence(m1x_0, m2x_0)  # x0 and P0
 
-        self.state_matrix = np.concatenate((top, bottom), axis=0)
+
+        # Currently R = self.Q
+        self.Dynamic_Model = SystemModel(f=self.state_matrix, Q=self.Q, h=self.h, R=self.Q,
+                                         m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
+        self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model)
+
+    def Init_Cov_Matrix(self):
+        # Calculating the noise covariance matrix , constants are from the use case in the original paper
+        diagonal = [1e-5, 1e-5, 1e-6]
+        diagonal_matrix = torch.diag(torch.tensor(diagonal))
+        delta_t = 0.1
+        A = ((delta_t ** 3) / 3) * diagonal_matrix
+        B = ((delta_t ** 2) / 2) * diagonal_matrix
+        C = ((delta_t ** 2) / 2) * diagonal_matrix
+        D = delta_t * diagonal_matrix
+        top = torch.cat((A, B), dim=1)
+        bottom = torch.cat((C, D), dim=1)
+        Q = torch.cat((top, bottom), dim=0)
+        return Q
 
     def step(self):
-        self.target.state_step()
-        self.Observation()
-        self.EKF()
-        #self.control_step()
+        self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
+        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R) #updates Dynamic_Model.x,.y,.x_prev
+
+        self.Estimator.step(self.Dynamic_Model.y)
+
+        # self.control_step()
+
         self.tracker.next_position()
-
-    def Observation(self, gamma=4, lamda=(3.8961*(1e-3))):
-        """
-        A method calculating
-        :param
-        :return:
-        """
-        los = self.target.current_position-self.tracker.current_position
-
-        delta_x = los[0]
-        delta_y = los[1]
-        delta_z = los[2]
-
-        #h(s) observstion function measurement equations
-        gamma_d_2 = (gamma/2)*(np.linalg.norm(los))
-        azimuth = np.arctan(delta_y/delta_x)
-        elevation = np.arctan(delta_z / np.linalg.norm(los))
-        #TODO: validate the radian velocity formula
-        radian_velocity = np.dot(np.transpose(self.tracker.current_velocity), los)/(np.linalg.norm(los))
-
-        doppler_shift = (4*radian_velocity)/(2*lamda)
-        h = [gamma_d_2, azimuth, elevation, doppler_shift]
-
-        #TODO: z_k=h(s)+n_k calculate the noise
-        n_k = 0
-        z = h # +n_k
-
-    def EKF(self):
-                # Define the state transition function
-        def f(x):
-            # TODO: Implement state transition function
-            return x
-
-        # Define the measurement function
-        def h(x):
-            # TODO: Implement measurement function
-            return x
-
-        # Create a new ExtendedKalmanFilter object
-        ekf = ExtendedKalmanFilter(f=f, m=m, Q=Q_structure, h=h, n=n, R=R_structure)
-    
-        # Run the filter for 10 time steps
-        for i in range(10):
-            # Generate a measurement
-            y = torch.randn(1) * 0.1 + torch.matmul(torch.Tensor([[1, 0]]), m1x_0)
-
-            # Update the filter
-            m1x_0, m2x_0 = ekf.Update(y, m1x_0, m2x_0)
-
-            # Print the current state estimate
-            print(f"State estimate at time {i}: {m1x_0.flatten()}")
-
-
-    def control_step(self, target_position):
-        """
-        A method calculating the control step of a tracker given the target state estimation
-        :param target_state: [[x,vx],[y,vy],[z,vz]]
-        :return: v: velocity magnitude
-                heading: angle
-                tilt: angle
-        """
-        # TODO: Implement control logic to calculate v, heading, and tilt
-        # EKF-estimate state
-        #Calculate loss
-        #decide control step
-        # Return constant values for now
-        # required flow: input: observation---> kalman filter---> loss---> return control decision
-        self.tracker.velocity_magnitude = 0.6
-        self.tracker.heading = 50
-        self.tracker.tilt = 50
-        return self.velocity_magnitude, self.heading, self.tilt
 
     def generate_simulation(self, num_steps=1000):
         # Create a list to store the last 10 positions
@@ -113,7 +65,7 @@ class Environment:
             env.step()
             coords.append(env.target.current_position[:, 0])
         coords = np.array(coords)
-        #coords = np.random.rand(100, 3)
+        # coords = np.random.rand(100, 3)
         # Create a figure and 3D axes
         fig = plt.figure()
         ax = plt.axes(111, projection='3d')
@@ -129,12 +81,27 @@ class Environment:
         ax.set_zlim3d(coords[:, 2].min(), coords[:, 2].max())
 
         # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail,dot),interval=50) #, tail), interval=50)
+        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail, dot),
+                                      interval=50)  # , tail), interval=50)
 
         # Show plot
         plt.show()
 
+
 if __name__ == '__main__':
+    print("Pipeline Start")
+    ################
+    ### Get Time ###
+    ################
+    today = datetime.today()
+    now = datetime.now()
+    strToday = today.strftime("%m.%d.%y")
+    strNow = now.strftime("%H:%M:%S")
+    strTime = strToday + "_" + strNow
+    print("Current Time =", strTime)
+
     env = Environment()
     env.generate_simulation()
+
+
 
