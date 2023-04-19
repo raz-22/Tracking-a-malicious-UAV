@@ -88,7 +88,7 @@ class SystemModel:
     #########################
     ### Generate Sequence ###
     #########################
-    def GenerateStep(self, Q_gen, R_gen):
+    def GenerateStep(self, Q_gen, R_gen, target_state, tracker_state):
         """
         for T=1, our case of UAV tracking problem, the method has:
         input: Q,R covariance matrices
@@ -97,11 +97,12 @@ class SystemModel:
         # Pre allocate an array for current state
         self.x = torch.zeros(size=[self.m, 1])
         # Pre allocate an array for current observation
-        self.y = torch.zeros(size=[self.n, 1])
+        self.y = torch.zeros(size=[self.m, 1])
 
         # Set x0 to be x previous
         self.x_prev = self.m1x_0
         xt = self.x_prev
+
         ########################
         #### State Evolution ###
         ########################
@@ -127,7 +128,7 @@ class SystemModel:
             ################
             # yt = h(y)+n  #
 
-            yt = self.h(xt)
+            yt = self.h(xt, target_state, tracker_state)
             # Observation Noise
             if self.n == 1:  # 1 dim noise
                 er = torch.normal(mean=0, std=R_gen)

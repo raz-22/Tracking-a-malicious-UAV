@@ -32,6 +32,8 @@ class Environment:
         self.Dynamic_Model = SystemModel(f=f, Q=self.Q, h=self.h, R=self.Q,
                                  m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
         self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model, "cuda")
+        self.target_state = self.initialize_target_state()
+        self.tracker_state = self.initialize_tracker_state()
 
     def Init_Cov_Matrix(self):
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
@@ -49,7 +51,7 @@ class Environment:
 
     def step(self):
         self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
-        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R) #updates Dynamic_Model.x,.y,.x_prev
+        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R, target_state=self.target_state, tracker_state=self.tracker_state) #updates Dynamic_Model.x,.y,.x_prev
 
         #self.Estimator.step(self.Dynamic_Model.y)
 
@@ -57,6 +59,16 @@ class Environment:
 
         self.tracker.next_position()
 
+    def initialize_target_state(self):
+            # Define the initial target state, depending on your specific problem
+            initial_target_state =  torch.zeros(size=[m, 1]) # ULI: INIT is not correct 
+            return initial_target_state
+
+    def initialize_tracker_state(self):
+        # Define the initial tracker state, depending on your specific problem
+        initial_tracker_state = torch.zeros(size=[m, 1]) # ULI: INIT is not correct 
+        return initial_tracker_state
+    
     def generate_simulation(self, num_steps=1000):
         # Create a list to store the last 10 positions
         coords = []
