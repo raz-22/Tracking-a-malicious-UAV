@@ -19,73 +19,22 @@ m = 6
 n = 4
 # TODO: UPDATE THESE PARAMETERS
 variance = 0
-m1x_0 = torch.ones(m, 1) 
-m2x_0 = 0 * 0 * torch.eye(m)
+m1x_0 = torch.zeros(m, 1)
+diagonal_values = [20**2, 20**2, 20**2, 0.5**2, 0.5**2, 0.5**2]
+diagonal_tensor = torch.tensor(diagonal_values)
+m2x_0 = torch.eye(m) * diagonal_tensor
 
-### Decimation
-delta_t_gen =  1e-5
-delta_t = 1 # 0.02
-ratio = delta_t_gen/delta_t
 
 ###Observation Function Parameters
 gamma = 4
 lamda = 3.8961*(1e-3)
 
-### Taylor expansion order
-J = 5 
-J_mod = 2
-"""
-### Angle of rotation in the 3 axes
-roll_deg = yaw_deg = pitch_deg = 1
-
-roll = roll_deg * (math.pi/180)
-yaw = yaw_deg * (math.pi/180)
-pitch = pitch_deg * (math.pi/180)
-
-RX = torch.tensor([
-                [1, 0, 0],
-                [0, math.cos(roll), -math.sin(roll)],
-                [0, math.sin(roll), math.cos(roll)]])
-RY = torch.tensor([
-                [math.cos(pitch), 0, math.sin(pitch)],
-                [0, 1, 0],
-                [-math.sin(pitch), 0, math.cos(pitch)]])
-RZ = torch.tensor([
-                [math.cos(yaw), -math.sin(yaw), 0],
-                [math.sin(yaw), math.cos(yaw), 0],
-                [0, 0, 1]])
-
-RotMatrix = torch.mm(torch.mm(RZ, RY), RX)
-
-### Auxiliar MultiDimensional Tensor B and C (they make A --> Differential equation matrix)
-C = torch.tensor([[-10, 10,    0],
-                  [ 28, -1,    0],
-                  [  0,  0, -8/3]]).float()
-"""
+delta_t = 1
 ######################################################
 ### State evolution function f for  UAV usecase ###
 ######################################################
-#TODO: understand F_GEN
-"""
-### f_gen is for dataset generation
-def f_gen(x, jacobian=False):
-    BX = torch.zeros([x.shape[0],m,m]).float() #[batch_size, m, m]
-    BX[:,1,0] = torch.squeeze(-x[:,2,:]) 
-    BX[:,2,0] = torch.squeeze(x[:,1,:])
-    
-    Const = C
-    A = torch.add(BX, Const)  
-    # Taylor Expansion for F    
-    F = torch.eye(m)
-    F = F.reshape((1, m, m)).repeat(x.shape[0], 1, 1) # [batch_size, m, m] identity matrix
-    for j in range(1,J+1):
-        F_add = (torch.matrix_power(A*delta_t_gen, j)/math.factorial(j))
-        F = torch.add(F, F_add)
-    if jacobian:
-        return torch.bmm(F, x), F
-    else:
-        return torch.bmm(F, x)
-"""
+
+
 ### f will be fed to filters and KNet, note that the mismatch comes from delta_t
 def f(x, jacobian=False):
     """

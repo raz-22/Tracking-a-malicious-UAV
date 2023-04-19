@@ -7,6 +7,7 @@ class UAV:
     def __init__(self, position=torch.tensor([[0.], [0.], [0.]]), velocity=torch.tensor([[0.], [0.], [0.]])):
         self.current_position = position
         self.current_velocity = velocity
+        self.state = torch.cat(self.current_position, self.current_velocity , dim = 0)
         self.position_list = [position]
         self.velocity_list = [velocity]
         self.delta_t = 1  # The size of discrete time step in seconds
@@ -35,7 +36,7 @@ class Tracker(UAV):
         self.tilt = torch.tensor(50)
         return self.velocity_magnitude, self.heading, self.tilt
 
-    def next_position(self):
+    def next_position(self, v, heading, tilt):
         """
         A method calculating the next position of a tracker given its control step {v,heading,tilt} and current position {x,y,z}
         :param target_state: [[x,vx],[y,vy],[z,vz]]
@@ -43,7 +44,7 @@ class Tracker(UAV):
                 self.current_velocity = [[vx], [vy], [vz]]
         """
         # Calculate the control step based on target state estimation
-        v, heading, tilt = self.control_step(target_position=self.current_position)
+        v, heading, tilt = v, heading, tilt
 
         # Next position calculation based on current position, velocity, and control inputs
         x = self.current_position[0] + v * (torch.cos(heading)) * (torch.sin(tilt)) * self.delta_t
@@ -67,8 +68,3 @@ class Target(UAV):
         self.current_position = position
         self.current_velocity = velocity
 
-    def next_position(self):
-        pass
-
-    def next_velocity(self):
-        pass

@@ -23,6 +23,7 @@ class Environment:
         self.h = h
         self.Q = self.Init_State_and_Cov_Matrix()
         self.R = self.Q
+
         # TODO: go over all init parameters
         #self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
         #self.sys_model.InitSequence(m1x_0, m2x_0)  # x0 and P0
@@ -31,6 +32,7 @@ class Environment:
         # Currently R = self.Q
         self.Dynamic_Model = SystemModel(f=self.state_matrix, Q=self.Q, h=self.h, R=self.Q,
                                          m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
+        self.Dynamic_Model.InitSequence(m1x_0, m2x_0)  # x0 and P0
         self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model)
 
     def Init_Cov_Matrix(self):
@@ -50,12 +52,13 @@ class Environment:
     def step(self):
 
         self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
-        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R) #updates Dynamic_Model.x,.y,.x_prev
-        self.Estimator.step(self.Dynamic_Model.y)
+        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state,target_state = self.target.state) #updates Dynamic_Model.x,.y,.x_prev
 
-        # self.control_step()
+        self.m1x_posterior, self.m2x_posterior = self.Estimator.Update(self.Dynamic_Model.y)
 
-        self.tracker.next_position()
+        # v, heading, tilt = self.control_step()
+        v, heading, tilt = torch.tensor(0.6), torch.tensor(50), torch.tensor(50)
+        self.tracker.next_position( v, heading, tilt)
 
     def generate_simulation(self, num_steps=1000):
         # Create a list to store the last 10 positions
