@@ -24,8 +24,8 @@ class Environment:
         self.Q = self.Init_State_and_Cov_Matrix()
         self.R = self.Q
         # TODO: go over all init parameters
-        self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
-        self.sys_model.InitSequence(m1x_0, m2x_0)  # x0 and P0
+        #self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
+        #self.sys_model.InitSequence(m1x_0, m2x_0)  # x0 and P0
 
 
         # Currently R = self.Q
@@ -48,9 +48,9 @@ class Environment:
         return Q
 
     def step(self):
+
         self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
         self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R) #updates Dynamic_Model.x,.y,.x_prev
-
         self.Estimator.step(self.Dynamic_Model.y)
 
         # self.control_step()

@@ -136,14 +136,25 @@ def h(x, target_state,tracker_state,jacobian=False):
     radian_velocity = torch.dot(tracker_state[1].transpose(), los) / d
 
     doppler_shift = (4 * radian_velocity) / (2 * lamda)
-    o= torch.stack((gamma_d_2, azimuth, elevation, doppler_shift))
+    o = torch.stack((gamma_d_2, azimuth, elevation, doppler_shift))
 
     if jacobian:
-        a = torch.transpose(torch.stack([(torch.cos(azimuth)*torch.sin(elevation)),(torch.sin(azimuth)*torch.sin(elevation)),torch.cos(elevation)]))
+        arg_1 = azimuth
+        arg_2 = elevation
+        a = torch.transpose(torch.stack([(torch.cos(arg_1)*torch.sin(arg_2)),(torch.sin(arg_1)*torch.sin(arg_2)),torch.cos(arg_2)]))
         #todo: breakpoint
-        jac_h_11 = (gamma/2)*a*torch.stack([azimuth,elevation])
-        jac_h_21 = a*torch.stack([((azimuth+(torch.pi/2))/(d*torch.sin(elevation))),((torch.pi/2)/(d*torch.sin(elevation)))])
-        jac_h_31 = a*torch.stack([(azimuth/d),((elevation+(torch.pi/2))/d)])
+        jac_h_11 = (gamma/2)*a
+        jac_h_42 = (gamma / (2 * lamda)) * a
+
+        arg_1 = (azimuth+(torch.pi/2))
+        arg_2 = (torch.pi/2)
+        a = torch.transpose(torch.stack( [(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)),torch.cos(arg_2)]))
+        jac_h_21 = a/(d*torch.sin(elevation))
+
+        arg_1 = azimuth
+        arg_2 = elevation+(torch.pi / 2)
+        a = torch.transpose(torch.stack([(torch.cos(arg_1) * torch.sin(arg_2)), (torch.sin(arg_1) * torch.sin(arg_2)), torch.cos(arg_2)]))
+        jac_h_31 = a/d
 
         w = torch.cross(los,dv)/(d**2)
         jac_h_41_1 = (gamma/(2*lamda))*((torch.cos(elevation)*w[1])-(torch.sin(azimuth)*torch.sin(elevation)))
@@ -153,7 +164,6 @@ def h(x, target_state,tracker_state,jacobian=False):
 
         zeros_block = torch.zeros(3,2) #jack_h_12,jack_h_22,jack_h_32
 
-        jac_h_42 =(gamma/(2*lamda))*a*torch.stack([azimuth,elevation])
 
         jac_h_1 = torch.cat((jac_h_11, zeros_block), dim=1)
         jac_h_2 = torch.cat((jac_h_21, zeros_block), dim=1)

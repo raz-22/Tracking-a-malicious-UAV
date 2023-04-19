@@ -10,7 +10,7 @@ class ExtendedKalmanFilter:
         self.n = SystemModel.n # the dimensionality of the observation variable.
         self.R = SystemModel.R # the covariance matrix of the observation noise.
         # Device
-        if device=='cuda':
+        if device == 'cuda':
             self.device = torch.device('cuda')
         else:
             self.device = torch.device('cpu')
@@ -73,8 +73,6 @@ class ExtendedKalmanFilter:
         ######################
         ### Generate Batch ###
         ######################
-
-
 
     ######################
     ### Compute Priors ###
