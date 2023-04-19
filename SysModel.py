@@ -18,6 +18,7 @@ from torch.distributions.multivariate_normal import MultivariateNormal
 
 
 class SystemModel:
+
     def __init__(self, f, Q, h, R, m, n, T, T_test, prior_Q=None, prior_Sigma=None, prior_S=None):
 
         ####################
@@ -56,6 +57,10 @@ class SystemModel:
             self.prior_S = torch.eye(self.n)
         else:
             self.prior_S = prior_S
+
+        # Initialize m1x_0 attribute
+        self.m1x_0 = None
+
 
     #####################
     ### Init Sequence ###

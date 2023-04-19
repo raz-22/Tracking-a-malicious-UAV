@@ -21,7 +21,7 @@ class Environment:
         self.target = Target()
         self.delta_t = 1
         self.h = h
-        self.Q = self.Init_State_and_Cov_Matrix()
+        self.Q = self.Init_Cov_Matrix()
         self.R = self.Q
         # TODO: go over all init parameters
         self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
@@ -29,9 +29,9 @@ class Environment:
 
 
         # Currently R = self.Q
-        self.Dynamic_Model = SystemModel(f=self.state_matrix, Q=self.Q, h=self.h, R=self.Q,
-                                         m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
-        self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model)
+        self.Dynamic_Model = SystemModel(f=f, Q=self.Q, h=self.h, R=self.Q,
+                                 m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
+        self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model, "cuda")
 
     def Init_Cov_Matrix(self):
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
@@ -51,7 +51,7 @@ class Environment:
         self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
         self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R) #updates Dynamic_Model.x,.y,.x_prev
 
-        self.Estimator.step(self.Dynamic_Model.y)
+        #self.Estimator.step(self.Dynamic_Model.y)
 
         # self.control_step()
 
@@ -101,6 +101,7 @@ if __name__ == '__main__':
     print("Current Time =", strTime)
 
     env = Environment()
+    env.Dynamic_Model.InitSequence(m1x_0, m2x_0)
     env.generate_simulation()
 
 
