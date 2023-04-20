@@ -80,22 +80,31 @@ def h(x,tracker_state,jacobian=False):
     # h(s) observstion function measurement equations
     d = torch.norm(los)
     gamma_d_2 = (gamma / 2) * (d)
-    if ((delta_x < 10^-8)  or (d < 10^-8)):
+    if delta_x ==torch.tensor(0):
+        if delta_y >0 :
+            azimuth = (torch.pi)/2
+            elevation = torch.atan(delta_z / d)
+            # TODO: validate the radian velocity formula
+            radian_velocity = torch.dot(los, dv) / d
+            doppler_shift = (4 * radian_velocity) / (2 * lamda)
+        else:
+            azimuth = (torch.pi)*1.5
+            elevation = torch.atan(delta_z / d)
+            # TODO: validate the radian velocity formula
+            radian_velocity = torch.dot(los, dv) / d
+            doppler_shift = (4 * radian_velocity) / (2 * lamda)
+    else:
         azimuth = torch.atan(delta_y / delta_x)
         elevation = torch.atan(delta_z / d)
         # TODO: validate the radian velocity formula
         radian_velocity = torch.dot(los, dv) / d
-    else:
-        print("devision by 0") 
-        print("delta_x = " ,delta_x)
-        print("d = " , d)
-    
-    azimuth = torch.atan(delta_y / delta_x)
-    elevation = torch.atan(delta_z / d)
-    # TODO: validate the radian velocity formula
-    radian_velocity = torch.dot(los, dv) / d
+        doppler_shift = (4 * radian_velocity) / (2 * lamda)
+    if d == torch.tensor(0):
+        azimuth = torch.tensor(0)
+        elevation = torch.tensor(0)
+        doppler_shift = torch.tensor(0)
+        radian_velocity = torch.tensor(0)
 
-    doppler_shift = (4 * radian_velocity) / (2 * lamda)
     o = torch.stack((gamma_d_2, azimuth, elevation, doppler_shift))
     o = torch.reshape(o[:], (n,1))
     if jacobian:
