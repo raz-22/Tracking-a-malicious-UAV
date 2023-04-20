@@ -2,7 +2,7 @@ import torch
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 from SysModel import SystemModel
 from datetime import datetime
-from parameters import  f, h, m1x_0, m2x_0, m, n, Q_structure, R_structure
+from parameters import  f, h, m1x_0, m2x_0, m, n, Q_structure, R_structure, target_state, tracker_state
 from UAV import *
 import math as mt
 import numpy as np
@@ -17,24 +17,29 @@ from EKF import ExtendedKalmanFilter
 
 class Environment:
     def __init__(self):
-        self.tracker = Tracker()
-        self.target = Target()
+        self.tracker_state = tracker_state
+        self.target_state = target_state
+
+        self.tracker = Tracker(tracker_state)
+        self.target = Target(target_state)
         self.delta_t = 1
         self.h = h
         self.f = f
         self.Q, self.R = self.Init_Cov_Matrix()
 
-
         # TODO: go over all init parameters
-        #self.sys_model = SystemModel(f, self.Q, h, self.Q, 1, 1, m, n)  # parameters for GT
-        #self.sys_model.InitSequence(m1x_0, m2x_0)  # x0 and P0
-
 
         # Currently R = self.Q
-        self.Dynamic_Model = SystemModel(f=self.f, Q=self.Q, h=self.h, R=self.Q,
+        self.Dynamic_Model = SystemModel(f=self.f, Q=self.Q, h=self.h, R=self.R,
                                          m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
         self.Dynamic_Model.InitSequence(m1x_0, m2x_0)  # x0 and P0
         self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model, 'none')
+
+    def Update_state(self,target_state,tracker_state):
+        self.tracker_state = tracker_state
+        self.target_state = target_state
+        self.tracker.Update_state(tracker_state)
+        self.target.Update_state(target_state)
 
     def Init_Cov_Matrix(self):
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
@@ -57,22 +62,28 @@ class Environment:
     def step(self):
 
         self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
-        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state,target_state = self.target.state) #updates Dynamic_Model.x,.y,.x_prev
+        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state) #updates Dynamic_Model.x,.y,.x_prev
 
-        self.m1x_posterior, self.m2x_posterior = self.Estimator.Update(self.Dynamic_Model.y, self.Dynamic_Model.m1x_0, self.Dynamic_Model.m2x_0, tracker_state = self.tracker.state,target_state = self.target.state)
+        self.m1x_posterior, self.m2x_posterior = self.Estimator.Update(self.Dynamic_Model.y, self.Dynamic_Model.m1x_0, self.Dynamic_Model.m2x_0, tracker_state = self.tracker.state)
+        self.Dynamic_Model.m1x_0 = self.m1x_posterior
+        self.Dynamic_Model.m2x_0 = self.m2x_posterior
 
         # v, heading, tilt = self.control_step()
         v, heading, tilt = torch.tensor(0.6), torch.tensor(50), torch.tensor(50)
-        self.tracker.next_position( v, heading, tilt)
+        tracker_state = self.tracker.next_position( v, heading, tilt)
+        self.Update_state(self.m1x_posterior,tracker_state)
 
-    def generate_simulation(self, num_steps=1000):
+    #Fixme: becomes nan after 192~ steps
+    def generate_simulation(self, num_steps=100):
         # Create a list to store the last 10 positions
         coords = []
 
         for i in range(num_steps):
-            env.step()
+            self.step()
+            self.target.current_position = torch.reshape( self.target.current_position ,(3,1))
             coords.append(env.target.current_position[:, 0])
-        coords = np.array(coords)
+        coords = np.stack(coords)
+        real_traj = np.stack(self.Dynamic_Model.real_traj)
         # coords = np.random.rand(100, 3)
         # Create a figure and 3D axes
         fig = plt.figure()
@@ -83,14 +94,18 @@ class Environment:
         # Create newest dot
         dot, = ax.plot([], [], [], 'o', c='b')
 
+        # Create tail and dot for real_traj
+        #tail_real, = ax.plot([], [], [], c='m')
+        #dot_real, = ax.plot([], [], [], 'o', c='c')
+
         # Set axis limits based on min/max values in coords
         ax.set_xlim3d(coords[:, 0].min(), coords[:, 0].max())
         ax.set_ylim3d(coords[:, 1].min(), coords[:, 1].max())
         ax.set_zlim3d(coords[:, 2].min(), coords[:, 2].max())
 
         # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail, dot),
-                                      interval=50)  # , tail), interval=50)
+        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail, dot), interval=50)#, real_traj, tail_real, dot_real),
+                                        # , tail), interval=50)
 
         # Show plot
         plt.show()
@@ -110,6 +125,13 @@ if __name__ == '__main__':
 
     env = Environment()
     env.generate_simulation()
+    print("Pipeline Ends")
+    today = datetime.today()
+    now = datetime.now()
+    strToday = today.strftime("%m.%d.%y")
+    strNow = now.strftime("%H:%M:%S")
+    strTime = strToday + "_" + strNow
+    print("Current Time =", strTime)
 
 
 

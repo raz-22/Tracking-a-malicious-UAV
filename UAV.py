@@ -4,18 +4,21 @@ import SysModel
 import torch
 
 class UAV:
-    def __init__(self, position=torch.tensor([[0.], [0.], [0.]]), velocity=torch.tensor([[0.], [0.], [0.]])):
-        self.current_position = position
-        self.current_velocity = velocity
+    def __init__(self,state):
+        self.current_position = state[:3, 0]
+        self.current_velocity = state[3:, 0]
         self.state = torch.cat((self.current_position, self.current_velocity) , dim = 0)
-        self.position_list = [position]
-        self.velocity_list = [velocity]
+        self.position_list = [state[:3, 0]]
+        self.velocity_list = [state[3:, 0]]
         self.delta_t = 1  # The size of discrete time step in seconds
 
-
+    def Update_state(self,state):
+        self.state = state
+        self.current_position = state[:3, 0]
+        self.current_velocity = state[3:, 0]
 class Tracker(UAV):
-    def __init__(self, position=torch.tensor([[0.], [0.], [0.]]), velocity=torch.tensor([[0.], [0.], [0.]])):
-        super().__init__(position, velocity)
+    def __init__(self, state):
+        super().__init__(state)
         self.velocity_magnitude = 0
         self.heading = 0
         self.tilt = 0
@@ -61,10 +64,11 @@ class Tracker(UAV):
         # Document the Tracker trajectory
         self.position_list.append(self.current_position)
         self.velocity_list.append(self.current_velocity)
+        self.state = torch.cat((self.current_position, self.current_velocity), dim=0)
+        return self.state
 
 class Target(UAV):
-    def __init__(self, position=torch.tensor([[0.], [0.], [90.]]), velocity=torch.tensor([[-0.3], [0.4], [0.]])):
-        super().__init__(position, velocity)
-        self.current_position = position
-        self.current_velocity = velocity
+    def __init__(self, state):
+        super().__init__(state)
+
 

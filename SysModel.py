@@ -38,7 +38,7 @@ class SystemModel:
         # Assign T
         self.T = T
         self.T_test = T_test
-
+        self.real_traj = []
         #########################
         ### Covariance Priors ###
         #########################
@@ -77,12 +77,14 @@ class SystemModel:
     #########################
     ### Generate Sequence ###
     #########################
-    def GenerateStep(self, Q_gen, R_gen,tracker_state,target_state):
+    def GenerateStep(self, Q_gen, R_gen,tracker_state):
         """
         for T=1, our case of UAV tracking problem, the method has:
         input: Q,R covariance matrices
         output: updating 1 state step to the observation and state arrays of using the system dynamical model
         """
+        #FIXME: remove the bug that reduces tracker_state dimensionality
+        tracker_state = torch.reshape(tracker_state, (self.m, 1))
         # Pre allocate an array for current state
         self.x = torch.zeros(size=[self.m, 1])
         # Pre allocate an array for current observation
@@ -97,13 +99,16 @@ class SystemModel:
         ##### xt = f(xt)+q  #####
         if torch.equal(Q_gen, torch.zeros(self.m, self.m)):  # No noise
             xt = self.f(self.x_prev)
+            self.real_traj.append(torch.reshape(xt[:3, 0],(3,1)))
         elif self.m == 1:  # 1 dim noise
             xt = self.f(self.x_prev)
+            self.real_traj.append(torch.reshape(xt[:3, 0],(3,1)))
             eq = torch.normal(mean=0, std=Q_gen)
             # Additive Process Noise
             xt = torch.add(xt, eq)
         else:
             xt = self.f(self.x_prev)
+            self.real_traj.append(torch.reshape(xt[:3, 0],(3,1)))
             mean = torch.zeros([self.m])
             distrib = MultivariateNormal(loc=mean, covariance_matrix=Q_gen)
             eq = distrib.rsample()
@@ -116,7 +121,7 @@ class SystemModel:
             ################
             # yt = h(y)+n  #
 
-            yt = self.h(xt, target_state, tracker_state)
+            yt = self.h(xt, tracker_state)
             # Observation Noise
             if self.n == 1:  # 1 dim noise
                 er = torch.normal(mean=0, std=R_gen)
@@ -138,7 +143,7 @@ class SystemModel:
             self.x=xt
 
             # Save Current Observation to Trajectory Array
-            self.y = yt.unsqueeze(1)
+            self.y = yt
 
             ################################
             ### Save Current to Previous ###

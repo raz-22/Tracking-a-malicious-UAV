@@ -17,27 +17,27 @@ class ExtendedKalmanFilter:
         else:
             self.device = torch.device('cpu')
     # Predict
-    def Predict(self, m1x_posterior, m2x_posterior, tracker_state ,target_state ):
+    def Predict(self, m1x_posterior, m2x_posterior, tracker_state  ):
         # Predict the 1-st moment of x
         self.m1x_prior = self.f(m1x_posterior)
 
         # Compute the Jacobians
-        F = getJacobian(m1x_posterior,tracker_state , target_state, self.f)
-        H = getJacobian(self.m1x_prior,tracker_state , target_state, self.h)
+        F = getJacobian(m1x_posterior,tracker_state , self.f)
+        H = getJacobian(self.m1x_prior,tracker_state , self.h)
 
         # Predict the 2-nd moment of x
-        self.m2x_prior = torch.bmm(F, torch.bmm(m2x_posterior, torch.transpose(F, 1, 2))) + self.Q
+        self.m2x_prior = torch.matmul(F, torch.matmul(m2x_posterior, torch.transpose(F, 0, 1))) + self.Q
 
         # Predict the 1-st moment of y
-        self.m1y = self.h(self.m1x_prior)
+        self.m1y = self.h(self.m1x_prior, tracker_state)
 
         # Predict the 2-nd moment of y
-        self.m2y = torch.bmm(H, torch.bmm(self.m2x_prior, torch.transpose(H, 1, 2))) + self.R
+        self.m2y = torch.matmul(H, torch.matmul(self.m2x_prior, torch.transpose(H, 0, 1))) + self.R
 
     # Compute the Kalman Gain ULI Kt =Σt|t−1 ·H·S−1 t|t−1 .
-    def KGain(self, m2x_prior, tracker_state , target_state):
-        self.KG = torch.bmm(m2x_prior, torch.transpose(getJacobian(self.m1x_prior, tracker_state , target_state,  self.h), 1, 2))
-        self.KG = torch.bmm(self.KG, torch.inverse(self.m2y))
+    def KGain(self, m2x_prior, tracker_state ):
+        self.KG = torch.matmul(m2x_prior, torch.transpose(getJacobian(self.m1x_prior, tracker_state ,  self.h), 0, 1))
+        self.KG = torch.matmul(self.KG, torch.inverse(self.m2y))
 
     # Innovation difference ∆yt = yt − ˆyt|t−1.
     def Innovation(self, y):
@@ -46,14 +46,16 @@ class ExtendedKalmanFilter:
     # Compute Posterior ULI where in the article?
     def Correct(self, m1x_prior, m2x_prior):
         # Compute the 1-st posterior moment
-        self.m1x_posterior = m1x_prior + torch.bmm(self.KG, self.dy)
+        self.m1x_posterior = m1x_prior + torch.matmul(self.KG, self.dy)
 
         # Compute the 2-nd posterior moment
-        self.m2x_posterior = m2x_prior - torch.bmm(self.KG, torch.bmm(self.m2y, torch.transpose(self.KG, 1, 2)))
+        self.m2x_posterior = m2x_prior - torch.matmul(self.KG, torch.matmul(self.m2y, torch.transpose(self.KG, 0, 1)))
 
-    def Update(self, y, m1x_posterior, m2x_posterior, tracker_state  ,target_state ):
-        self.Predict(m1x_posterior, m2x_posterior, tracker_state, target_state)
-        self.KGain(m2x_posterior, tracker_state , target_state)
+    def Update(self, y, m1x_posterior, m2x_posterior, tracker_state ):
+        #FIXME: remove the bug that reduces tracker_state dimensionality
+        tracker_state = torch.reshape(tracker_state, (6, 1))
+        self.Predict(m1x_posterior, m2x_posterior, tracker_state)
+        self.KGain(m2x_posterior, tracker_state )
         self.Innovation(y)
         self.Correct(self.m1x_prior, self.m2x_prior)
 
@@ -63,58 +65,13 @@ class ExtendedKalmanFilter:
 
     def UpdateJacobians(self, F, H):
         self.F = F.to(self.device)
-        self.F_T = torch.transpose(F, 1, 2)
+        self.F_T = torch.transpose(F, 0, 1)
         self.H = H.to(self.device)
-        self.H_T = torch.transpose(H, 1, 2)
+        self.H_T = torch.transpose(H, 0, 1)
 
 #TODO: fix function
     def Init_batched_sequence(self, m1x_0, m2x_0):
         self.m1x_0 = m1x_0  # [ m, 1]
         self.m2x_0 = m2x_0  # [ m, m]
 
-        ######################
-        ### Generate Batch ###
-        ######################
 
-    ######################
-    ### Compute Priors ###
-    ######################
-    def step_prior(self):
-        # Predict the 1-st moment of x
-        self.m1x_prior = self.f(self.m1x_posterior)
-
-        # Predict the 1-st moment of y
-        self.m1y = self.h(self.m1x_prior)
-
-    ##############################
-    ### Kalman Gain Estimation ###
-    ##############################
-
-    def step(self,y):
-        # Compute Priors
-        self.step_prior()
-
-        # Compute Kalman Gain
-        self.step_KGain_est(y)
-
-        # Save KGain in array
-        self.KGain_array[self.i] = self.KGain
-        self.i += 1
-
-        # Innovation
-        y_obs = torch.unsqueeze(y, 1)
-        dy = y_obs - self.m1y
-
-        # Compute the 1-st posterior moment
-        INOV = torch.matmul(self.KGain, dy)
-        self.m1x_posterior_previous = self.m1x_posterior
-        self.m1x_posterior = self.m1x_prior + INOV
-
-        #self.state_process_posterior_0 = self.state_process_prior_0
-        self.m1x_prior_previous = self.m1x_prior
-
-        # update y_prev
-        self.y_previous = y
-
-        # return
-        return torch.squeeze(self.m1x_posterior)
