@@ -80,6 +80,16 @@ def h(x,tracker_state,jacobian=False):
     # h(s) observstion function measurement equations
     d = torch.norm(los)
     gamma_d_2 = (gamma / 2) * (d)
+    if ((delta_x < 10^-8)  or (d < 10^-8)):
+        azimuth = torch.atan(delta_y / delta_x)
+        elevation = torch.atan(delta_z / d)
+        # TODO: validate the radian velocity formula
+        radian_velocity = torch.dot(los, dv) / d
+    else:
+        print("devision by 0") 
+        print("delta_x = " ,delta_x)
+        print("d = " , d)
+    
     azimuth = torch.atan(delta_y / delta_x)
     elevation = torch.atan(delta_z / d)
     # TODO: validate the radian velocity formula

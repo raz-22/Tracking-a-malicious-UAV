@@ -2,7 +2,7 @@ import torch
 torch.pi = torch.acos(torch.zeros(1)).item() * 2  # which is 3.1415927410125732
 from SysModel import SystemModel
 from datetime import datetime
-from parameters import  f, h, m1x_0, m2x_0, m, n, Q_structure, R_structure, target_state, tracker_state
+from parameters import  f, h, m1x_0, m2x_0, n, target_state, tracker_state
 from UAV import *
 import math as mt
 import numpy as np
@@ -80,35 +80,39 @@ class Environment:
 
         for i in range(num_steps):
             self.step()
-            self.target.current_position = torch.reshape( self.target.current_position ,(3,1))
+            self.target.current_position = torch.reshape(self.target.current_position, (3, 1))
             coords.append(env.target.current_position[:, 0])
+            print(f"Step {i + 1}: {self.target.current_position[:, 0]}")  # Print the location at each step
         coords = np.stack(coords)
         real_traj = np.stack(self.Dynamic_Model.real_traj)
-        # coords = np.random.rand(100, 3)
+
         # Create a figure and 3D axes
         fig = plt.figure()
         ax = plt.axes(111, projection='3d')
-        # Create tail
 
+        # Create tail
         tail, = ax.plot([], [], [], c='r')
         # Create newest dot
         dot, = ax.plot([], [], [], 'o', c='b')
 
-        # Create tail and dot for real_traj
-        #tail_real, = ax.plot([], [], [], c='m')
-        #dot_real, = ax.plot([], [], [], 'o', c='c')
-
         # Set axis limits based on min/max values in coords
-        ax.set_xlim3d(coords[:, 0].min(), coords[:, 0].max())
-        ax.set_ylim3d(coords[:, 1].min(), coords[:, 1].max())
-        ax.set_zlim3d(coords[:, 2].min(), coords[:, 2].max())
+        x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
+        y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
+        z_min, z_max = coords[:, 2].min(), coords[:, 2].max()
+
+        if not (np.isnan(x_min) or np.isinf(x_min) or np.isnan(x_max) or np.isinf(x_max)):
+            ax.set_xlim3d(x_min, x_max)
+        if not (np.isnan(y_min) or np.isinf(y_min) or np.isnan(y_max) or np.isinf(y_max)):
+            ax.set_ylim3d(y_min, y_max)
+        if not (np.isnan(z_min) or np.isinf(z_min) or np.isnan(z_max) or np.isinf(z_max)):
+            ax.set_zlim3d(z_min, z_max)
 
         # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail, dot), interval=50)#, real_traj, tail_real, dot_real),
-                                        # , tail), interval=50)
+        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail, dot), interval=50)
 
         # Show plot
         plt.show()
+
 
 
 if __name__ == '__main__':
