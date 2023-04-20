@@ -74,9 +74,10 @@ class Environment:
         self.Update_state(self.m1x_posterior,tracker_state)
 
     #Fixme: becomes nan after 192~ steps
-    
     def generate_simulation(self, num_steps=100):
+        # Create a list to store the last 10 positions
         coords = []
+
         for i in range(num_steps):
             self.step()
             self.target.current_position = torch.reshape(self.target.current_position, (3, 1))
@@ -85,20 +86,33 @@ class Environment:
         coords = np.stack(coords)
         real_traj = np.stack(self.Dynamic_Model.real_traj)
 
-        print("Real Trajectory:")
-        for i, pos in enumerate(real_traj):
-            print(f"Step {i + 1}: {pos}")
-
+        # Create a figure and 3D axes
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
+        ax = plt.axes(111, projection='3d')
+
+        # Create tail
+        tail, = ax.plot([], [], [], c='r')
+        # Create newest dot
+        dot, = ax.plot([], [], [], 'o', c='b')
+
+        # Set axis limits based on min/max values in coords
+        x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
+        y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
+        z_min, z_max = coords[:, 2].min(), coords[:, 2].max()
+
+        if not (np.isnan(x_min) or np.isinf(x_min) or np.isnan(x_max) or np.isinf(x_max)):
+            ax.set_xlim3d(x_min, x_max)
+        if not (np.isnan(y_min) or np.isinf(y_min) or np.isnan(y_max) or np.isinf(y_max)):
+            ax.set_ylim3d(y_min, y_max)
+        if not (np.isnan(z_min) or np.isinf(z_min) or np.isnan(z_max) or np.isinf(z_max)):
+            ax.set_zlim3d(z_min, z_max)
 
         # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph, num_steps, fargs=(coords, real_traj, ax), interval=50, blit=False)
+        ani = animation.FuncAnimation(fig, update_graph, len(coords), fargs=(coords, tail, dot), interval=50)
 
+        # Show plot
         plt.show()
+
 
 
 if __name__ == '__main__':

@@ -9,6 +9,7 @@ class ExtendedKalmanFilter:
         self.h = SystemModel.h # a function that describes the measurement model, which maps the state at time t to the observation at time t.
         self.n = SystemModel.n # the dimensionality of the observation variable.
         self.R = SystemModel.R # the covariance matrix of the observation noise.
+
         # Device
         if device == 'cuda':
             self.device = torch.device('cuda')
@@ -24,7 +25,7 @@ class ExtendedKalmanFilter:
         # Compute the Jacobians
         F = getJacobian(m1x_posterior,tracker_state , self.f)
         H = getJacobian(self.m1x_prior,tracker_state , self.h)
-
+        self.jac_H =H
         # Predict the 2-nd moment of x
         self.m2x_prior = torch.matmul(F, torch.matmul(m2x_posterior, torch.transpose(F, 0, 1))) + self.Q
 
@@ -59,7 +60,7 @@ class ExtendedKalmanFilter:
         self.Innovation(y)
         self.Correct(self.m1x_prior, self.m2x_prior)
 
-        return self.m1x_posterior, self.m2x_posterior
+        return self.m1x_posterior, self.m2x_posterior , self.m2x_prior ,  self.jac_H
 
     #########################
 
