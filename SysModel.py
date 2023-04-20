@@ -99,16 +99,16 @@ class SystemModel:
         ##### xt = f(xt)+q  #####
         if torch.equal(Q_gen, torch.zeros(self.m, self.m)):  # No noise
             xt = self.f(self.x_prev)
-            self.real_traj.append(torch.reshape(xt[:3, 0],(3,1)))
+            self.real_traj.append(torch.reshape(xt,(self.m,1)))
         elif self.m == 1:  # 1 dim noise
             xt = self.f(self.x_prev)
-            self.real_traj.append(torch.reshape(xt[:3, 0],(3,1)))
+            self.real_traj.append(torch.reshape(xt,(self.m,1)))
             eq = torch.normal(mean=0, std=Q_gen)
             # Additive Process Noise
             xt = torch.add(xt, eq)
         else:
             xt = self.f(self.x_prev)
-            self.real_traj.append(torch.reshape(xt[:3, 0],(3,1)))
+            self.real_traj.append(torch.reshape(xt,(self.m,1)))
             mean = torch.zeros([self.m])
             distrib = MultivariateNormal(loc=mean, covariance_matrix=Q_gen)
             eq = distrib.rsample()

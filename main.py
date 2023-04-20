@@ -77,14 +77,18 @@ class Environment:
     
     def generate_simulation(self, num_steps=100):
         coords = []
+        est_state = []
         for i in range(num_steps):
             self.step()
             self.target.current_position = torch.reshape(self.target.current_position, (3, 1))
-            coords.append(env.target.current_position[:, 0])
+            coords.append(self.target.current_position[:, 0])
+            est_state.append(torch.reshape(self.target_state[:,0],(6,1)))
             print(f"Step {i + 1}: {self.target.current_position[:, 0]}")  # Print the location at each step
         coords = np.stack(coords)
-        real_traj = np.stack(self.Dynamic_Model.real_traj)
-
+        real_state = np.stack(self.Dynamic_Model.real_traj[:] )
+        real_traj = real_state[:,:3,:]
+        est_state = np.stack(est_state[:])
+        #TODO: for RAZ, THE ARRAYS FOR THE MSE ARE est_state and real_state
         print("Real Trajectory:")
         for i, pos in enumerate(real_traj):
             print(f"Step {i + 1}: {pos}")
