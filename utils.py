@@ -4,18 +4,17 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
 
-def update_graph(num, data, tail,dot):
-    if num >= 100:
-        tail.set_data(data[num-50:num-1, 0], data[num-50:num-1, 1])
-        tail.set_3d_properties(data[num-50:num-1, 2])
-    elif num >= 1:
-        tail.set_data(data[:num-1, 0], data[:num-1, 1])
-        tail.set_3d_properties(data[:num-1, 2])
+def update_graph(num, coords, real_traj, ax):
+    ax.clear()
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
 
-    dot.set_data(data[num, 0], data[num, 1])
-    dot.set_3d_properties(data[num, 2])
-    dot.set_color('r')
+    if num > 0:
+        ax.plot(coords[:num, 0], coords[:num, 1], coords[:num, 2], lw=2, c='r', label='current_position')
+        ax.plot(real_traj[:num, 0], real_traj[:num, 1], real_traj[:num, 2], lw=2, c='b', label='real_traj')
 
-    tail.set_color('b')
+    if num == 1:
+        ax.legend()
 
-    return tail,dot
+    return ax
