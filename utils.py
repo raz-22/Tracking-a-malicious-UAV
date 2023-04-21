@@ -18,3 +18,10 @@ def update_graph(num, coords, real_traj, ax):
         ax.legend()
 
     return ax
+
+def calculate_mse(a, b, warmup_steps=5):
+    if len(a) != len(b):
+        raise ValueError("Both input arrays must have the same length")
+
+    mse = np.mean((a[warmup_steps:] - b[warmup_steps:]) ** 2)
+    return mse

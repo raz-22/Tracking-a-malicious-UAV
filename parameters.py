@@ -79,6 +79,8 @@ def h(x,tracker_state,jacobian=False):
 
     # h(s) observstion function measurement equations
     d = torch.norm(los)
+    if d.item() == 0:
+        print('zero')
     gamma_d_2 = (gamma / 2) * (d)
     if delta_x ==torch.tensor(0):
         if delta_y >0 :

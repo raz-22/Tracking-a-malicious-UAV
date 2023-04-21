@@ -55,7 +55,7 @@ class ExtendedKalmanFilter:
         #FIXME: remove the bug that reduces tracker_state dimensionality
         tracker_state = torch.reshape(tracker_state, (6, 1))
         self.Predict(m1x_posterior, m2x_posterior, tracker_state)
-        self.KGain(m2x_posterior, tracker_state )
+        self.KGain(m2x_posterior, tracker_state)
         self.Innovation(y)
         self.Correct(self.m1x_prior, self.m2x_prior)
 

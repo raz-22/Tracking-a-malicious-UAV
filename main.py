@@ -73,8 +73,10 @@ class Environment:
         tracker_state = self.tracker.next_position( v, heading, tilt)
         self.Update_state(self.m1x_posterior,tracker_state)
 
+
     #Fixme: becomes nan after 192~ steps
     
+
     def generate_simulation(self, num_steps=100):
         coords = []
         est_state = []
@@ -82,16 +84,23 @@ class Environment:
             self.step()
             self.target.current_position = torch.reshape(self.target.current_position, (3, 1))
             coords.append(self.target.current_position[:, 0])
-            est_state.append(torch.reshape(self.target_state[:,0],(6,1)))
+            est_state.append(torch.reshape(self.target_state[:, 0], (6,1)))
+            # for v in self.target.current_position[:, 0]:
+            #     # if torch.isnan(v):
+            #     #     print('nan')
+        
             print(f"Step {i + 1}: {self.target.current_position[:, 0]}")  # Print the location at each step
         coords = np.stack(coords)
-        real_state = np.stack(self.Dynamic_Model.real_traj[:] )
+        real_state = np.stack(self.Dynamic_Model.real_traj[:])
         real_traj = real_state[:,:3,:]
         est_state = np.stack(est_state[:])
-        #TODO: for RAZ, THE ARRAYS FOR THE MSE ARE est_state and real_state
+        
         print("Real Trajectory:")
         for i, pos in enumerate(real_traj):
-            print(f"Step {i + 1}: {pos}")
+            print(f"Step {i + 1}: {pos[:, 0]}")
+
+        mse = calculate_mse(est_state, real_state)
+        print(f"Mean Squared Error between est_state and real_state: {mse}") 
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
