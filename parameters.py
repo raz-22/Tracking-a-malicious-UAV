@@ -110,6 +110,7 @@ def h(x,tracker_state,jacobian=False):
     o = torch.stack((gamma_d_2, azimuth, elevation, doppler_shift))
     o = torch.reshape(o[:], (n,1))
     if jacobian:
+
         arg_1 = azimuth
         arg_2 = elevation
         a = torch.stack(
@@ -154,9 +155,12 @@ def h(x,tracker_state,jacobian=False):
         jac_top = torch.cat((jac_h_1, jac_h_2), dim=0)
         jac_bottom = torch.cat((jac_h_3, jac_h_4), dim=0)
         jac_h =torch.cat((jac_top, jac_bottom), dim=0)
-
+        if torch.isnan(o).any() or torch.isnan(jac_h).any():
+            print(" there is nan ")
         return o, jac_h
     else:
+        if torch.isnan(o).any() :
+            print(" there is nan ")
         return o
 
 
@@ -200,6 +204,8 @@ def getJacobian(x,tracker_state , g):
     #     Jac[i,:,:] = torch.squeeze(autograd.functional.jacobian(g, torch.unsqueeze(x[i,:,:],0)))
     # Method 2: using F, H directly
     if g==h:
+        if torch.isnan(x).any():
+            print("nan")
         _,Jac = g(x , tracker_state, jacobian=True)
     else:
         _, Jac = g(x, jacobian=True)

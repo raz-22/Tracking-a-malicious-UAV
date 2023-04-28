@@ -120,7 +120,8 @@ class SystemModel:
             ### Emission ###
             ################
             # yt = h(y)+n  #
-
+            if torch.isnan(xt).any():
+                print("none")
             yt = self.h(xt, tracker_state)
             # Observation Noise
             if self.n == 1:  # 1 dim noise
@@ -149,3 +150,4 @@ class SystemModel:
             ### Save Current to Previous ###
             ################################
             self.x_prev = xt
+
