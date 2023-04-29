@@ -26,6 +26,7 @@ class SystemModel:
         self.f = f
         self.m = m
         self.Q = Q
+        self.x_prev = None
         #########################
         ### Observation Model ###
         #########################
@@ -65,6 +66,7 @@ class SystemModel:
         self.m1x_0 = m1x_0
         self.m2x_0 = m2x_0
 
+
     #########################
     ### Update Covariance ###
     #########################
@@ -89,9 +91,9 @@ class SystemModel:
         self.x = torch.zeros(size=[self.m, 1])
         # Pre allocate an array for current observation
         self.y = torch.zeros(size=[self.n, 1])
-
-        # Set x0 to be x previous
-        self.x_prev = self.m1x_0
+        if self.x_prev is None:
+            # Set x0 to be x previous
+            self.x_prev = self.m1x_0
         xt = self.x_prev
         ########################
         #### State Evolution ###
@@ -108,14 +110,13 @@ class SystemModel:
             xt = torch.add(xt, eq)
         else:
             xt = self.f(self.x_prev)
-            self.real_traj.append(torch.reshape(xt,(self.m,1)))
             mean = torch.zeros([self.m])
             distrib = MultivariateNormal(loc=mean, covariance_matrix=Q_gen)
             eq = distrib.rsample()
             eq = torch.reshape(eq[:], xt.size())
             # Additive Process Noise
             xt = torch.add(xt, eq)
-
+            self.real_traj.append(torch.reshape(xt, (self.m, 1)))
             ################
             ### Emission ###
             ################
@@ -151,3 +152,115 @@ class SystemModel:
             ################################
             self.x_prev = xt
 
+            ##################################################################################################
+            ######################## For DL module training process ##########################################
+            ##################################################################################################
+
+    #########################
+    ### Generate Sequence ###
+    #########################
+    def GenerateSequence(self, Q_gen, R_gen, T):
+        # Pre allocate an array for current state
+        self.x = torch.zeros(size=[self.m, T])
+        # Set x0 to be x previous
+        self.x_prev = self.m1x_0
+        xt = self.x_prev
+
+        # Generate Sequence Iteratively
+        for t in range(0, T):
+
+            ########################
+            #### State Evolution ###
+            ########################
+            if torch.equal(Q_gen, torch.zeros(self.m, self.m)):  # No noise
+                xt = self.f(self.x_prev)
+            else:
+                xt = self.f(self.x_prev)
+                mean = torch.zeros([self.m])
+                distrib = MultivariateNormal(loc=mean, covariance_matrix=Q_gen)
+                eq = distrib.rsample()
+                eq = torch.reshape(eq[:], xt.size())
+                # Additive Process Noise
+                xt = torch.add(xt, eq)
+
+            ########################
+            ### Squeeze to Array ###
+            ########################
+
+            # Save Current State to Trajectory Array
+            self.x[:, t] = torch.squeeze(xt, 1)
+
+            ################################
+            ### Save Current to Previous ###
+            ################################
+            self.x_prev = xt
+
+    def Init_batched_sequence(self, m1x_0_batch, m2x_0_batch):
+
+        self.m1x_0_batch = m1x_0_batch
+        self.x_prev = m1x_0_batch
+        self.m2x_0_batch = m2x_0_batch
+    ######################
+    ### Generate Batch ###
+    ######################
+    def GenerateBatch(self, size, T, randomInit=False, distribution="normal"):
+        if (randomInit):
+            # Allocate Empty Array for Random Initial Conditions
+            self.m1x_0_rand = torch.zeros(size, self.m, 1)
+            if distribution == 'uniform':
+                ### if Uniform Distribution for random init
+                for i in range(size):
+                    initConditions = torch.rand_like(self.m1x_0) * args.variance
+                    self.m1x_0_rand[i, :, 0:1] = initConditions.view(self.m, 1)
+
+            elif distribution == 'normal':
+                ### if Normal Distribution for random init
+                for i in range(size):
+                    distrib = MultivariateNormal(loc=torch.squeeze(self.m1x_0), covariance_matrix=self.m2x_0)
+                    initConditions = distrib.rsample().view(self.m, 1)
+                    self.m1x_0_rand[i, :, 0:1] = initConditions
+            else:
+                raise ValueError('args.distribution not supported!')
+
+            self.Init_batched_sequence(self.m1x_0_rand, self.m2x_0)  ### for sequence generation
+        else:  # fixed init
+            initConditions = self.m1x_0.view(1, self.m, 1).expand(size, -1, -1)
+            self.Init_batched_sequence(initConditions, self.m2x_0)  ### for sequence generation
+
+
+        # Allocate Empty Array for Input
+        self.Input = torch.empty(size, self.n, T)
+        # Allocate Empty Array for Target
+        self.Target = torch.empty(size, self.m, T)
+
+        # Set x0 to be x previous
+        self.x_prev = self.m1x_0_batch
+        xt = self.x_prev
+
+        # Generate in a batched manner
+        for t in range(0, T):
+            ########################
+            #### State Evolution ###
+            ########################
+            if torch.equal(self.Q, torch.zeros(self.m, self.m)):  # No noise
+                xt = self.f(self.x_prev)
+
+            else:
+                xt = self.f(self.x_prev)
+                mean = torch.zeros([size, self.m])
+                distrib = MultivariateNormal(loc=mean, covariance_matrix=self.Q)
+                eq = distrib.rsample().view(size, self.m, 1)
+                # Additive Process Noise
+                xt = torch.add(xt, eq)
+
+            ########################
+            ### Squeeze to Array ###
+            ########################
+
+            # Save Current State to Trajectory Array
+            self.Target[:, :, t] = torch.squeeze(xt, 2)
+
+            ################################
+            ### Save Current to Previous ###
+            ################################
+            self.x_prev =xt

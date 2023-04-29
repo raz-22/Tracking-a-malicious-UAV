@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
 from EKF import ExtendedKalmanFilter
-
+from mlp import MLP
 class Environment:
     def __init__(self):
         self.tracker_state =tracker_state
@@ -27,12 +27,15 @@ class Environment:
         self.Q, self.R = self.Init_Cov_Matrix()
         self.tracker_traj =[self.tracker_state[:3, :]]
         # TODO: go over all init parameters
-
+        self.m1x_posterior = m1x_0
+        self.m2x_posterior = m2x_0
         # Currently R = self.Q
         self.Dynamic_Model = SystemModel(f=self.f, Q=self.Q, h=self.h, R=self.R,
                                          m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
         self.Dynamic_Model.InitSequence(m1x_0, m2x_0)  # x0 and P0
         self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model, 'none')
+        self.model = MLP()
+        self.model.initialize_weights()
 
     def Update_state(self,target_state,tracker_state):
         self.tracker_state = tracker_state
@@ -66,7 +69,7 @@ class Environment:
     def information_theoretic_cost(self):
         cost = torch.inverse(self.m2x_prior) + torch.matmul(torch.transpose(self.jac_H, 0, 1), torch.matmul(torch.inverse(self.R), self.jac_H))
         return cost
-    def control_step(self):
+    def control_step(self, module = "mlp"):
         ###############################################
         ####  Calculate Information Theoretic Cost  ###
         ###############################################
@@ -75,62 +78,89 @@ class Environment:
         ####  Calculate Cost  ###
         #########################
         cost = self.calculate_cost(inf_theor_cost)
-        #########################
+        #####################################
         ####  Calculate Gradient on Cost  ###
-        #########################
+        #####################################
+        #####################################
+        ##  Use selected Decision Module   ##
+        #####################################
+        if module == "mlp":
+            input = torch.cat((self.Dynamic_Model.m1x_0.squeeze(),self.tracker.state.squeeze()),dim = 0)
+            navigation_decision = self.model.forward(input)
+            return navigation_decision[0],navigation_decision[1],navigation_decision[2], cost
+        elif module =="rnn":
+            pass
+        elif module == "analityc":
+            pass
+        elif module =="fixed":
+            return torch.tensor(100), torch.tensor(50), torch.tensor(50), cost
 
-
-
-    def step(self):
-        #########################
-        ##  Step & Observation ##
-        #########################
-        self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
-        self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state) #updates Dynamic_Model.x,.y,.x_prev
-        #########################
-        ### State Estimation ###
-        #########################
-
-        self.m1x_posterior, self.m2x_posterior, self.m2x_prior, self.m2y, self.jac_H = self.Estimator.Update(self.Dynamic_Model.y, self.Dynamic_Model.m1x_0, self.Dynamic_Model.m2x_0, tracker_state = self.tracker.state)
-
-        self.Dynamic_Model.m1x_0 = self.m1x_posterior
-        self.Dynamic_Model.m2x_0 = self.m2x_posterior
-        #########################
-        ###### Control Law ######
-        #########################
-        # v, heading, tilt = self.control_step()
-
-        v, heading, tilt = torch.tensor(100), torch.tensor(50), torch.tensor(50)
-
-        tracker_state = self.tracker.next_position( v, heading, tilt)
-        self.tracker_traj.append(tracker_state[:3, :])
-#        self.Dynamic_Model.y.backward()
-#        print(self.target_state.grad)
-        self.Update_state(self.m1x_posterior,tracker_state)
-       # self.control_step()
-
+    def step(self, mode = "test"):
+        if mode == "test":
+            #########################
+            ##  Step & Observation ##
+            #########################
+            self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
+            self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state) #updates Dynamic_Model.x,.y,.x_prev
+            #########################
+            ### State Estimation ###
+            #########################
+            self.m1x_posterior, self.m2x_posterior, self.m2x_prior, self.m2y, self.jac_H = self.Estimator.Update(self.Dynamic_Model.y, self.m1x_posterior, self.m2x_posterior, tracker_state = self.tracker.state)
+            #self.Dynamic_Model.m1x_0 = self.m1x_posterior
+            #self.Dynamic_Model.m2x_0 = self.m2x_posterior
+            #########################
+            ###### Control Law ######
+            #########################
+            v, heading, tilt, cost = self.control_step(module ="fixed")
+            #########################
+            ###### Update Stat ######
+            #########################
+            tracker_state = self.tracker.next_position( v, heading, tilt)
+            self.tracker_traj.append(tracker_state[:3, :])
+            self.Update_state(self.m1x_posterior,tracker_state)
+        elif mode == "train":
+            #########################
+            ### State Estimation ###
+            #########################
+            self.m1x_posterior, self.m2x_posterior, self.m2x_prior, self.m2y, self.jac_H = self.Estimator.Update(
+                self.Dynamic_Model.y, self.Dynamic_Model.m1x_0, self.Dynamic_Model.m2x_0,
+                tracker_state=self.tracker.state)
+            self.Dynamic_Model.m1x_0 = self.m1x_posterior
+            self.Dynamic_Model.m2x_0 = self.m2x_posterior
+            #########################
+            ###### Control Law ######
+            #########################
+            v, heading, tilt, cost = self.control_step()
+            #########################
+            ###### Update Stat ######
+            #########################
+            tracker_state = self.tracker.next_position(v, heading, tilt)
+            self.tracker_traj.append(tracker_state[:3, :])
+            self.Update_state(self.m1x_posterior, tracker_state)
 
     #Fixme: becomes nan after 192~ steps
-    
 
+    def train(self, module="mlp", num_steps = 50):
+        if module == "mlp":
+            pass
     def generate_simulation(self, num_steps=50):
-        coords = []
+        est_traj = []
         est_state = []
         for i in range(num_steps):
             self.step()
             self.target.current_position = torch.reshape(self.target.current_position, (3, 1))
-            coords.append(self.target.current_position[:, 0])
+            est_traj.append(self.m1x_posterior[:3, 0])
             est_state.append(torch.reshape(self.target_state[:, 0], (6,1)))
-            # for v in self.target.current_position[:, 0]:
-            #     # if torch.isnan(v):
-            #     #     print('nan')
         
             print(f"Step {i + 1}: {self.target.current_position[:, 0]}")  # Print the location at each step
-        coords = np.stack(coords)
+        est_traj = np.stack(est_traj)
+
         real_state = np.stack(self.Dynamic_Model.real_traj[:])
         real_traj = real_state[:,:3,:]
         real_traj = real_traj[:,:,0]
+
         est_state = np.stack(est_state[:])
+
         tracker_traj=np.stack(self.tracker_traj)[:50,:,0]
         print("Real Trajectory:")
         for i, pos in enumerate(real_traj):
@@ -172,10 +202,10 @@ class Environment:
         # Add the labels to the plot
         ax.legend()
 
-        # Set axis limits based on min/max values in coords
-        x_min, x_max = coords[:, 0].min(), coords[:, 0].max()
-        y_min, y_max = coords[:, 1].min(), coords[:, 1].max()
-        z_min, z_max = coords[:, 2].min(), coords[:, 2].max()
+        # Set axis limits based on min/max values in est_traj
+        x_min, x_max = est_traj[:, 0].min(), est_traj[:, 0].max()
+        y_min, y_max = est_traj[:, 1].min(), est_traj[:, 1].max()
+        z_min, z_max = est_traj[:, 2].min(), est_traj[:, 2].max()
 
         if not (np.isnan(x_min) or np.isinf(x_min) or np.isnan(x_max) or np.isinf(x_max)):
             ax.set_xlim3d(x_min, x_max)
@@ -186,7 +216,7 @@ class Environment:
 
 
         # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph,len(coords), fargs=(coords, real_traj, tracker_traj,  tail,dot, real_tale, real_dot, tracker_tale, tracker_dot), interval=50)#, blit=False)
+        ani = animation.FuncAnimation(fig, update_graph,len(est_traj), fargs=(est_traj, real_traj, tracker_traj,  tail,dot, real_tale, real_dot, tracker_tale, tracker_dot), interval=50)#, blit=False)
 
         plt.show()
 
