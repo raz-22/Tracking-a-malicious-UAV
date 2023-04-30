@@ -3,43 +3,55 @@ import matplotlib; matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.animation as animation
+import torch
+def update_graph(num, tgt_est_traj, real_traj, tracker_traj, est_tail, est_dot, real_tale, real_dot, tracker_tale, tracker_dot):
+    length_mx = 0
+    length_mn = 0
+    if num>1:
+        length_mx = num
+        length_mn =1
+        if num >= 100:
+            length_mx = 50
+            length_mn= 1
+        x = tgt_est_traj[num - length_mx:num-length_mn , 0,0].numpy()
+        y = tgt_est_traj[num - length_mx:num-length_mn, 1,0].numpy()
+        z = tgt_est_traj[num - length_mx:num-length_mn, 2,0].numpy()
+        est_tail.set_data(x, y)
+        est_tail.set_3d_properties(z)
 
-def update_graph(num, data, real_traj, tracker_traj, tail,dot, real_tale, real_dot, tracker_tale, tracker_dot):
-    if num >= 100:
-        tail.set_data(data[num-50:num-1, 0], data[num-50:num-1, 1])
-        tail.set_3d_properties(data[num-50:num-1, 2])
+        x =real_traj[num - length_mx:num-length_mn, 0, 0].numpy()
+        y =real_traj[num - length_mx:num-length_mn, 1, 0].numpy()
+        z =real_traj[num - length_mx:num-length_mn, 2, 0].numpy()
+        real_tale.set_data(x, y)
+        real_tale.set_3d_properties(z)
 
-        real_tale.set_data(real_traj[num-50:num-1, 0], real_traj[num-50:num-1, 1])
-        real_tale.set_3d_properties(real_traj[num-50:num-1, 2])
+        x = tracker_traj[num - length_mx:num-length_mn, 0, 0].numpy()
+        y = tracker_traj[num - length_mx:num-length_mn, 1, 0].numpy()
+        z = tracker_traj[num - length_mx:num-length_mn, 2, 0].numpy()
+        tracker_tale.set_data(x, y)
+        tracker_tale.set_3d_properties(z)
+    else:
+        pass
 
-        tracker_tale.set_data(tracker_traj[num-50:num-1, 0], tracker_traj[num-50:num-1, 1])
-        tracker_tale.set_3d_properties(tracker_traj[num - 50:num - 1, 2])
-    elif num >= 1:
-        tail.set_data(data[:num-1, 0], data[:num-1, 1])
-        tail.set_3d_properties(data[:num-1, 2])
+    est_dot.set_data(tgt_est_traj[num, 0,0].item(), tgt_est_traj[num, 1,0].item())
+    est_dot.set_3d_properties(tgt_est_traj[num, 2,0].item())
 
-        real_tale.set_data(real_traj[:num-1, 0], real_traj[:num-1, 1])
-        real_tale.set_3d_properties(real_traj[:num-1, 2])
+    real_dot.set_data(real_traj[num, 0,0], real_traj[num, 1,0].item())
+    real_dot.set_3d_properties(real_traj[num, 2,0].item())
 
-        tracker_tale.set_data(tracker_traj[:num-1, 0], tracker_traj[:num-1, 1])
-        tracker_tale.set_3d_properties(tracker_traj[:num-1, 2])
+    tracker_dot.set_data(tracker_traj[num, 0].item(), tracker_traj[num, 1,0].item())
+    tracker_dot.set_3d_properties(tracker_traj[num, 2,0].item())
 
-    dot.set_data(data[num, 0], data[num, 1])
-    dot.set_3d_properties(data[num, 2])
-    #dot.set_color('b')
+    return est_tail,est_dot, real_tale, real_dot,tracker_tale,tracker_dot
 
-    real_dot.set_data(real_traj[num, 0], real_traj[num, 1])
-    real_dot.set_3d_properties(real_traj[num, 2])
-    #real_dot.set_color('g')
-    tracker_dot.set_data(tracker_traj[num, 0], tracker_traj[num, 1])
-    tracker_dot.set_3d_properties(tracker_traj[num, 2])
-    #tail.set_color('b')
-    #real_tale.set_color('m')
-    return tail,dot, real_tale, real_dot,tracker_tale,tracker_dot
-
-def calculate_mse(a, b, warmup_steps=5):
-    if len(a) != len(b):
+def calculate_loss(tensor1, tensor2, warmup_steps=0, type ="mse"):
+    if len(tensor1) != len(tensor2):
         raise ValueError("Both input arrays must have the same length")
-
-    mse = np.mean((a[warmup_steps:] - b[warmup_steps:]) ** 2)
-    return mse
+    if type == "mse":
+        # Calculate the MSE between the two tensors using broadcasting
+        mse_loss = torch.nn.MSELoss(reduction='mean')
+        mse = mse_loss(tensor1, tensor2)
+        print("MSE:", mse.item())
+        return mse
+    else:
+        pass

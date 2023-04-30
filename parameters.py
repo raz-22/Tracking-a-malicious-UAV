@@ -20,6 +20,7 @@ n = 4
 # TODO: UPDATE THESE PARAMETERS
 variance = 0
 m1x_0 = torch.reshape(torch.tensor([[1e-5], [1e-5], [1e-5], [1e-5], [1e-5], [1e-5]]), (m,1))
+
 diagonal_values = [20**2, 20**2, 20**2, 0.5**2, 0.5**2, 0.5**2]
 diagonal_tensor = torch.tensor(diagonal_values)
 m2x_0 = torch.eye(m) * diagonal_tensor
@@ -35,6 +36,8 @@ delta_t = 1
 ######################################################
 target_state = torch.reshape(torch.tensor([[1e-5], [1e-5], [1e-5], [1e-5], [1e-5], [1e-5]]), (m,1))
 tracker_state = torch.reshape(torch.tensor([[1e-5], [1e-5], [90], [-0.3], [0.4], [1e-5]]), (m,1))
+if target_state.any() != m1x_0.any():
+    raise ValueError("m1x_0 and initial tracker state must be equal")
 
 ### f will be fed to filters and KNet, note that the mismatch comes from delta_t
 def f(x, jacobian=False):

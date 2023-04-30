@@ -17,32 +17,55 @@ from EKF import ExtendedKalmanFilter
 from mlp import MLP
 class Environment:
     def __init__(self):
-        self.tracker_state =tracker_state
-        self.target_state = target_state
+        ##Changing in states are through the Objects tracker/target
+        if m1x_0.any() != target_state.any():
+            raise ValueError("m1x_0 and initial tracker state must be equal")
         self.tracker = Tracker(tracker_state)
         self.target = Target(target_state)
+        self.tgt_est_state = None
+        self.m2x_posterior = m2x_0
+        self.tgt_real_state = self.target.state
+        self.tracker_state = self.tracker.state
+
+        #self.tracker_state =tracker_state
+        #self.target_state = target_state
+        #self.tracker = Tracker(tracker_state)
+        #self.target = Target(target_state)
+        self.tgt_real_traj = torch.empty((0,3,1)) #torch.cat([self.tgt_real_state[:3]], dim = 0).reshape(0,3,1)
+        self.tracker_traj = torch.empty((0,3,1)) #torch.cat([self.tracker_state[:3]], dim =0).reshape(0,3,1)
+        self. tgt_est_traj = torch.empty((0,3,1))
+        self.m1x_posterior = m1x_0
+        #self.m2x_posterior = m2x_0
+
         self.delta_t = 1
         self.h = h
         self.f = f
         self.Q, self.R = self.Init_Cov_Matrix()
-        self.tracker_traj =[self.tracker_state[:3, :]]
+
         # TODO: go over all init parameters
-        self.m1x_posterior = m1x_0
-        self.m2x_posterior = m2x_0
+
         # Currently R = self.Q
         self.Dynamic_Model = SystemModel(f=self.f, Q=self.Q, h=self.h, R=self.R,
                                          m=6, n=4, T=1, T_test=1, prior_Q=None, prior_Sigma=None, prior_S=None)
-        self.Dynamic_Model.InitSequence(m1x_0, m2x_0)  # x0 and P0
+        self.Dynamic_Model.InitSequence(target_state, m2x_0)  # x0 and P0
         self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model, 'none')
         self.model = MLP()
         self.model.initialize_weights()
-
-    def Update_state(self,target_state,tracker_state):
-        self.tracker_state = tracker_state
-        self.target_state = target_state
-        self.tracker.Update_state(tracker_state)
-        self.target.Update_state(target_state)
-
+    def Update_state(self,est_state = None, target_state=None,tracker_state=None):
+        if target_state is not None:
+            self.tgt_real_state = target_state
+            self.target.Update_state(target_state)
+            self.tgt_real_traj = torch.cat( [self.tgt_real_traj,target_state[:3, :].unsqueeze(0)], dim = 0)
+            #self.tgt_real_traj.append(target_state[:3, :])
+        if tracker_state is not None:
+            self.tracker_state = tracker_state
+            self.tracker.Update_state(tracker_state)
+            self.tracker_traj = torch.cat([self.tracker_traj, tracker_state[:3, :].unsqueeze(0)], dim= 0)
+            #self.tracker_traj.append(tracker_state[:3, :])
+        if est_state is not None:
+            tgt_est_state = est_state
+            self.tgt_est_traj = torch.cat([self.tgt_est_traj, est_state[:3, :].unsqueeze(0)], dim=0)
+            #self.tgt_est_traj.append(est_state[:3, :])
     def Init_Cov_Matrix(self):
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
         diagonal = [1e-5, 1e-5, 1e-6]
@@ -85,7 +108,7 @@ class Environment:
         ##  Use selected Decision Module   ##
         #####################################
         if module == "mlp":
-            input = torch.cat((self.Dynamic_Model.m1x_0.squeeze(),self.tracker.state.squeeze()),dim = 0)
+            input = torch.cat((self.target.state.squeeze(),self.tracker.state.squeeze()),dim = 0)
             navigation_decision = self.model.forward(input)
             return navigation_decision[0],navigation_decision[1],navigation_decision[2], cost
         elif module =="rnn":
@@ -101,23 +124,23 @@ class Environment:
             ##  Step & Observation ##
             #########################
             self.Dynamic_Model.UpdateCovariance_Matrix(self.Q,self.R)
-            self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state) #updates Dynamic_Model.x,.y,.x_prev
-            #########################
+            tgt_state = self.Dynamic_Model.GenerateStep(Q_gen=self.Q, R_gen=self.R,tracker_state = self.tracker.state) # updates Dynamic_Model.x,.y,.x_prev
+            self.Update_state(target_state = tgt_state)
+            ########################
             ### State Estimation ###
-            #########################
+            ########################
             self.m1x_posterior, self.m2x_posterior, self.m2x_prior, self.m2y, self.jac_H = self.Estimator.Update(self.Dynamic_Model.y, self.m1x_posterior, self.m2x_posterior, tracker_state = self.tracker.state)
             #self.Dynamic_Model.m1x_0 = self.m1x_posterior
             #self.Dynamic_Model.m2x_0 = self.m2x_posterior
             #########################
             ###### Control Law ######
             #########################
-            v, heading, tilt, cost = self.control_step(module ="fixed")
+            v, heading, tilt, cost = self.control_step(module = "fixed")
             #########################
             ###### Update Stat ######
             #########################
             tracker_state = self.tracker.next_position( v, heading, tilt)
-            self.tracker_traj.append(tracker_state[:3, :])
-            self.Update_state(self.m1x_posterior,tracker_state)
+            self.Update_state(est_state = self.m1x_posterior,tracker_state = tracker_state)
         elif mode == "train":
             #########################
             ### State Estimation ###
@@ -143,30 +166,16 @@ class Environment:
     def train(self, module="mlp", num_steps = 50):
         if module == "mlp":
             pass
-    def generate_simulation(self, num_steps=50):
-        est_traj = []
-        est_state = []
+    def generate_simulation(self, num_steps=10):
         for i in range(num_steps):
             self.step()
-            self.target.current_position = torch.reshape(self.target.current_position, (3, 1))
-            est_traj.append(self.m1x_posterior[:3, 0])
-            est_state.append(torch.reshape(self.target_state[:, 0], (6,1)))
-        
-            print(f"Step {i + 1}: {self.target.current_position[:, 0]}")  # Print the location at each step
-        est_traj = np.stack(est_traj)
+            print(f"Step {i + 1}: {self.target.current_position[:]}")  # Print the location at each step
 
-        real_state = np.stack(self.Dynamic_Model.real_traj[:])
-        real_traj = real_state[:,:3,:]
-        real_traj = real_traj[:,:,0]
-
-        est_state = np.stack(est_state[:])
-
-        tracker_traj=np.stack(self.tracker_traj)[:50,:,0]
         print("Real Trajectory:")
-        for i, pos in enumerate(real_traj):
+        for i, pos in enumerate(self.tgt_real_traj):
             print(f"Step {i + 1}: {pos[:]}")
 
-        mse = calculate_mse(est_state, real_state)
+        mse = calculate_loss(self.tgt_est_traj, self.tgt_real_traj)
         print(f"Mean Squared Error between est_state and real_state: {mse}") 
 
         fig = plt.figure()
@@ -180,9 +189,9 @@ class Environment:
         ###### Estimated Trajectory ######
         ##################################
         # Create tail
-        tail, = ax.plot([], [], [], c='r')
+        est_tail, = ax.plot([], [], [], c='r')
         # Create newest dot
-        dot, = ax.plot([], [], [], 'o', c='b')
+        est_dot, = ax.plot([], [], [], 'o', c='b')
         ##################################
         ######## Real Trajectory #########
         ##################################
@@ -195,7 +204,7 @@ class Environment:
         tracker_dot = ax.plot([], [], [], 'o', c='orange', markersize=10, markeredgecolor='black', markeredgewidth=1.5)[0]
 
         # Add the labels to the dots
-        dot.set_label('Estimated UAV')
+        est_dot.set_label('Estimated UAV')
         real_dot.set_label('Real UAV')
         tracker_dot.set_label('Tracker UAV')
 
@@ -203,9 +212,9 @@ class Environment:
         ax.legend()
 
         # Set axis limits based on min/max values in est_traj
-        x_min, x_max = est_traj[:, 0].min(), est_traj[:, 0].max()
-        y_min, y_max = est_traj[:, 1].min(), est_traj[:, 1].max()
-        z_min, z_max = est_traj[:, 2].min(), est_traj[:, 2].max()
+        x_min, x_max = self.tracker_traj[:, 0].min(), self.tracker_traj[:, 0].max()
+        y_min, y_max = self.tracker_traj[:, 1].min(), self.tracker_traj[:, 1].max()
+        z_min, z_max = self.tracker_traj[:, 2].min(), self.tracker_traj[:, 2].max()
 
         if not (np.isnan(x_min) or np.isinf(x_min) or np.isnan(x_max) or np.isinf(x_max)):
             ax.set_xlim3d(x_min, x_max)
@@ -216,7 +225,7 @@ class Environment:
 
 
         # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph,len(est_traj), fargs=(est_traj, real_traj, tracker_traj,  tail,dot, real_tale, real_dot, tracker_tale, tracker_dot), interval=50)#, blit=False)
+        ani = animation.FuncAnimation(fig, update_graph,len(self.tgt_est_traj), fargs=(self.tgt_est_traj, self.tgt_real_traj, self.tracker_traj,  est_tail,est_dot, real_tale, real_dot, tracker_tale, tracker_dot), interval=50)#, blit=False)
 
         plt.show()
 
