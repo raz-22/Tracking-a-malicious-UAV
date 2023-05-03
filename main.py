@@ -70,7 +70,7 @@ class Environment:
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
         diagonal = [1e-5, 1e-5, 1e-6]
         diagonal_matrix = torch.diag(torch.tensor(diagonal))
-        delta_t = 0.1
+        delta_t = 1
         A = ((delta_t ** 3) / 3) * diagonal_matrix
         B = ((delta_t ** 2) / 2) * diagonal_matrix
         C = ((delta_t ** 2) / 2) * diagonal_matrix
@@ -167,7 +167,7 @@ class Environment:
         if module == "mlp":
             pass
     
-    def generate_simulation(self, num_steps= 99):
+    def generate_simulation(self, num_steps= 999):
         # Set up the 3D plot
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")
@@ -201,7 +201,7 @@ class Environment:
             print(f"Mean Squared Error between est_state and real_state: {mse}", file=file)
 
         # Keep the plot open after the simulation
-        plt.show()
+        #plt.show()
 
 
 

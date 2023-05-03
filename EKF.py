@@ -36,7 +36,7 @@ class ExtendedKalmanFilter:
 
     # Compute the Kalman Gain ULI Kt =Σt|t−1 ·H·S−1 t|t−1 .
     def KGain(self, m2x_prior, tracker_state ):
-        self.KG = torch.matmul(m2x_prior, torch.transpose(getJacobian(self.m1x_prior, tracker_state ,  self.h), 0, 1))
+        self.KG = torch.matmul(m2x_prior, torch.transpose(self.jac_H , 0, 1))
         self.KG = torch.matmul(self.KG, torch.inverse(self.m2y))
 
     # Innovation difference ∆yt = yt − ˆyt|t−1.
