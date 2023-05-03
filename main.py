@@ -163,72 +163,45 @@ class Environment:
 
     #Fixme: becomes nan after 192~ steps
 
-    def train(self, module="mlp", num_steps = 50):
+    def train(self, module="mlp", num_steps = 999):
         if module == "mlp":
             pass
-    def generate_simulation(self, num_steps=10):
-        for i in range(num_steps):
-            self.step()
-            print(f"Step {i + 1}: {self.target.current_position[:]}")  # Print the location at each step
-
-        print("Real Trajectory:")
-        for i, pos in enumerate(self.tgt_real_traj):
-            print(f"Step {i + 1}: {pos[:]}")
-
-        mse = calculate_loss(self.tgt_est_traj, self.tgt_real_traj)
-        print(f"Mean Squared Error between est_state and real_state: {mse}") 
-
+    
+    def generate_simulation(self, num_steps=999):
+        # Set up the 3D plot
         fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_title("3D Live Simulation")
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
 
-        ax.set_xlabel('X')
-        ax.set_ylabel('Y')
-        ax.set_zlabel('Z')
+        with open("output.txt", "w") as file:
+            for i in range(num_steps):
+                self.step()
+                target_pos = self.target.current_position.tolist()
+                print(f"Target Step {i + 1}: {target_pos}", file=file)
 
-        ##################################
-        ###### Estimated Trajectory ######
-        ##################################
-        # Create tail
-        est_tail, = ax.plot([], [], [], c='r')
-        # Create newest dot
-        est_dot, = ax.plot([], [], [], 'o', c='b')
-        ##################################
-        ######## Real Trajectory #########
-        ##################################
-        real_tale = ax.plot([], [], [], c='m', linestyle='--', linewidth=2)[0]
-        real_dot = ax.plot([], [], [], 's', c='g', markersize=10)[0]
-        ##################################
-        ######## Tracker Trajectory ######
-        ##################################
-        tracker_tale = ax.plot([], [], [], c='purple', linestyle=':', linewidth=2)[0]
-        tracker_dot = ax.plot([], [], [], 'o', c='orange', markersize=10, markeredgecolor='black', markeredgewidth=1.5)[0]
+                # Update the target position on the 3D plot
+                ax.scatter(*target_pos, c="r", marker="o", label="Target" if i == 0 else "")
+                
+                if i < len(self.tgt_real_traj):
+                    tracker_pos = self.tgt_real_traj[i].squeeze().tolist()
+                    print(f"Tracker Step {i + 1}: {tracker_pos}", file=file)
 
-        # Add the labels to the dots
-        est_dot.set_label('Estimated UAV')
-        real_dot.set_label('Real UAV')
-        tracker_dot.set_label('Tracker UAV')
+                    # Update the tracker position on the 3D plot
+                    ax.scatter(*tracker_pos, c="b", marker="^", label="Tracker" if i == 0 else "")
 
-        # Add the labels to the plot
-        ax.legend()
+                # Update the plot every step and pause briefly
+                if i == 0:
+                    ax.legend()
+                plt.pause(0.01)
 
-        # Set axis limits based on min/max values in est_traj
-        x_min, x_max = self.tracker_traj[:, 0].min(), self.tracker_traj[:, 0].max()
-        y_min, y_max = self.tracker_traj[:, 1].min(), self.tracker_traj[:, 1].max()
-        z_min, z_max = self.tracker_traj[:, 2].min(), self.tracker_traj[:, 2].max()
+            mse = calculate_loss(self.tgt_est_traj, self.tgt_real_traj)
+            print(f"Mean Squared Error between est_state and real_state: {mse}", file=file)
 
-        if not (np.isnan(x_min) or np.isinf(x_min) or np.isnan(x_max) or np.isinf(x_max)):
-            ax.set_xlim3d(x_min, x_max)
-        if not (np.isnan(y_min) or np.isinf(y_min) or np.isnan(y_max) or np.isinf(y_max)):
-            ax.set_ylim3d(y_min, y_max)
-        if not (np.isnan(z_min) or np.isinf(z_min) or np.isnan(z_max) or np.isinf(z_max)):
-            ax.set_zlim3d(z_min, z_max)
-
-
-        # Set animation function
-        ani = animation.FuncAnimation(fig, update_graph,len(self.tgt_est_traj), fargs=(self.tgt_est_traj, self.tgt_real_traj, self.tracker_traj,  est_tail,est_dot, real_tale, real_dot, tracker_tale, tracker_dot), interval=50)#, blit=False)
-
+        # Keep the plot open after the simulation
         plt.show()
-
 
 
 

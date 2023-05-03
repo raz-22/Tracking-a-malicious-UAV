@@ -121,8 +121,8 @@ class SystemModel:
             ### Emission ###
             ################
             # yt = h(y)+n  #
-            if torch.isnan(xt).any():
-                print("none")
+            # if torch.isnan(xt).any():
+            #     print("none")
             yt = self.h(xt, tracker_state)
             # Observation Noise
             if self.n == 1:  # 1 dim noise
