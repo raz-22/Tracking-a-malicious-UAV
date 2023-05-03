@@ -19,7 +19,7 @@ m = 6
 n = 4
 # TODO: UPDATE THESE PARAMETERS
 variance = 0
-m1x_0 = torch.reshape(torch.tensor([[1e-5], [1e-5], [1e-5], [1e-5], [1e-5], [1e-5]]), (m,1))
+m1x_0 = torch.reshape(torch.tensor([[0], [0], [90], [-0.3], [0.4], [1e-5]]), (m,1))
 
 diagonal_values = [20**2, 20**2, 20**2, 0.5**2, 0.5**2, 0.5**2]
 diagonal_tensor = torch.tensor(diagonal_values)
@@ -34,8 +34,8 @@ delta_t = 1
 ######################################################
 ### State evolution function f for  UAV usecase ###
 ######################################################
-target_state = torch.reshape(torch.tensor([[1e-5], [1e-5], [1e-5], [1e-5], [1e-5], [1e-5]]), (m,1))
-tracker_state = torch.reshape(torch.tensor([[1e-5], [1e-5], [90], [-0.3], [0.4], [1e-5]]), (m,1))
+target_state = torch.reshape(torch.tensor([[0], [0], [90], [-0.3], [0.4], [1e-5]]), (m,1))
+tracker_state = torch.reshape(torch.tensor([[-50], [-50], [80], [-0.3], [0.4], [1e-5]]), (m,1))
 if target_state.any() != m1x_0.any():
     raise ValueError("m1x_0 and initial tracker state must be equal")
 
@@ -91,19 +91,19 @@ def h(x,tracker_state,jacobian=False):
             elevation = torch.atan(delta_z / d)
             # TODO: validate the radian velocity formula
             radian_velocity = torch.dot(los, dv) / d
-            doppler_shift = (4 * radian_velocity) / (2 * lamda)
+            doppler_shift = (gamma * radian_velocity) / (2 * lamda)
         else:
             azimuth = (torch.pi)*1.5
             elevation = torch.atan(delta_z / d)
             # TODO: validate the radian velocity formula
             radian_velocity = torch.dot(los, dv) / d
-            doppler_shift = (4 * radian_velocity) / (2 * lamda)
+            doppler_shift = (gamma * radian_velocity) / (2 * lamda)
     else:
         azimuth = torch.atan(delta_y / delta_x)
         elevation = torch.atan(delta_z / d)
         # TODO: validate the radian velocity formula
         radian_velocity = torch.dot(los, dv) / d
-        doppler_shift = (4 * radian_velocity) / (2 * lamda)
+        doppler_shift = (gamma * radian_velocity) / (2 * lamda)
     if d == torch.tensor(0):
         azimuth = torch.tensor(0)
         elevation = torch.tensor(0)
@@ -143,7 +143,7 @@ def h(x,tracker_state,jacobian=False):
 
         w = torch.cross(los,dv)/(d**2)
         w = torch.reshape(w[:], (1, 3))
-        jac_h_41_1 = (gamma/(2*lamda))*((torch.cos(elevation)*w[0][1])-(torch.sin(azimuth)*torch.sin(elevation)))
+        jac_h_41_1 = (gamma/(2*lamda))*((torch.cos(elevation)*w[0][1])-(torch.sin(azimuth)*torch.sin(elevation)*w[0][2]))
         jac_h_41_2 = (gamma / (2 * lamda)) * ((torch.cos(azimuth)*torch.sin(elevation)*w[0][2])-(torch.cos(elevation)*w[0][0]))
         jac_h_41_3 = (gamma / (2 * lamda)) * ((torch.sin(azimuth)*torch.sin(elevation)*w[0][0])-(torch.cos(azimuth)*torch.sin(elevation)*w[0][1]))
         jac_h_41 = torch.reshape(torch.stack([jac_h_41_1, jac_h_41_2, jac_h_41_3]), (1, 3))

@@ -70,7 +70,7 @@ class Environment:
         # Calculating the noise covariance matrix , constants are from the use case in the original paper
         diagonal = [1e-5, 1e-5, 1e-6]
         diagonal_matrix = torch.diag(torch.tensor(diagonal))
-        delta_t = 0.1
+        delta_t = 1
         A = ((delta_t ** 3) / 3) * diagonal_matrix
         B = ((delta_t ** 2) / 2) * diagonal_matrix
         C = ((delta_t ** 2) / 2) * diagonal_matrix
@@ -116,7 +116,7 @@ class Environment:
         elif module == "analityc":
             pass
         elif module =="fixed":
-            return torch.tensor(100), torch.tensor(50), torch.tensor(50), cost
+            return torch.tensor(0), torch.tensor(0), torch.tensor(0), cost
 
     def step(self, mode = "test"):
         if mode == "test":
@@ -174,7 +174,7 @@ class Environment:
         print("Real Trajectory:")
         for i, pos in enumerate(self.tgt_real_traj):
             print(f"Step {i + 1}: {pos[:]}")
-
+        diff = self.tgt_est_traj-self.tgt_real_traj
         mse = calculate_loss(self.tgt_est_traj, self.tgt_real_traj)
         print(f"Mean Squared Error between est_state and real_state: {mse}") 
 

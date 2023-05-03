@@ -40,23 +40,6 @@ class SystemModel:
         self.T = T
         self.T_test = T_test
         self.real_traj = []
-        #########################
-        ### Covariance Priors ###
-        #########################
-        if prior_Q is None:
-            self.prior_Q = torch.eye(self.m)
-        else:
-            self.prior_Q = prior_Q
-
-        if prior_Sigma is None:
-            self.prior_Sigma = torch.zeros((self.m, self.m))
-        else:
-            self.prior_Sigma = prior_Sigma
-
-        if prior_S is None:
-            self.prior_S = torch.eye(self.n)
-        else:
-            self.prior_S = prior_S
 
     #####################
     ### Init Sequence ###
@@ -85,7 +68,7 @@ class SystemModel:
         input: Q,R covariance matrices
         output: updating 1 state step to the observation and state arrays of using the system dynamical model
         """
-        #FIXME: remove the bug that reduces tracker_state dimensionality
+
         tracker_state = torch.reshape(tracker_state, (self.m, 1))
         # Pre allocate an array for current state
         self.x = torch.zeros(size=[self.m, 1])
