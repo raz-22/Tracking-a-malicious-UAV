@@ -163,11 +163,11 @@ class Environment:
 
     #Fixme: becomes nan after 192~ steps
 
-    def train(self, module="mlp", num_steps = 999):
+    def train(self, module="mlp", num_steps = 99):
         if module == "mlp":
             pass
     
-    def generate_simulation(self, num_steps=999):
+    def generate_simulation(self, num_steps= 99):
         # Set up the 3D plot
         fig = plt.figure()
         ax = fig.add_subplot(111, projection="3d")

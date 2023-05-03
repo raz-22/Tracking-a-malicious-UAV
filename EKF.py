@@ -23,16 +23,12 @@ class ExtendedKalmanFilter:
 
         # Compute the Jacobians
         F = getJacobian(m1x_posterior,tracker_state , self.f)
-        # if torch.isnan(self.m1x_prior).any():
-        #     print("none")
         H = getJacobian(self.m1x_prior,tracker_state , self.h)
         self.jac_H = H
         # Predict the 2-nd moment of x
         self.m2x_prior = torch.matmul(F, torch.matmul(m2x_posterior, torch.transpose(F, 0, 1))) + self.Q
 
         # Predict the 1-st moment of y
-        # if torch.isnan(self.m1x_prior).any():
-        #     print("none")
         self.m1y = self.h(self.m1x_prior, tracker_state)
 
         # Predict the 2-nd moment of y
@@ -62,8 +58,6 @@ class ExtendedKalmanFilter:
         self.KGain(m2x_posterior, tracker_state)
         self.Innovation(y)
         self.Correct(self.m1x_prior, self.m2x_prior)
-        # if torch.isnan(self.m1x_posterior).any() or torch.isnan(self.m2x_posterior).any():
-        #     print("nan")
         return self.m1x_posterior, self.m2x_posterior,  self.m2x_prior,self.m2y, self.jac_H
 
     #########################
