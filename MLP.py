@@ -30,6 +30,3 @@ class MLP(nn.Module):
         # Pass the output through the output layer with linear activation
         x = self.fc3(x)
         return x
-
-
-
