@@ -78,6 +78,20 @@ class ExtendedKalmanFilter:
         if self.KG.dim() == 2:
             self.m2x_posterior = torch.matmul(self.m2y, torch.transpose(self.KG, 0, 1))
             self.m2x_posterior = self.m2x_prior - torch.matmul(self.KG, self.m2x_posterior)
+            print("m2x_prior")
+            print(self.m2x_prior)
+            print("H jacobian:")
+            print(self.batched_H)
+            print("R:")
+            print(self.R)
+            print("m2y:")
+            print(self.m2y)
+            print("H T jacobian:")
+            print(self.batched_H_T)
+            print("KG:")
+            print(self.KG)
+            print("m2x_posterior:")
+            print(self.m2x_posterior)
             ###################################
             ####### Only For TEST Purposes ####
             ###################################
