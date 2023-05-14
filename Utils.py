@@ -70,7 +70,7 @@ class InfromationTheoreticCost(nn.Module):
             det = torch.linalg.det(inf_theor_cost)
             ln_det_cost = -torch.log(det)
             loss = torch.mean(ln_det_cost)
-            return loss
+            return loss, ln_det_cost
 
         if mode == "batch_sequential":
             pass

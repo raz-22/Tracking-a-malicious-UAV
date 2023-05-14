@@ -186,30 +186,7 @@ def constant_ctrl_simulation(env, num_steps= 99):
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
         print("Mean Squared Error between est_state and real_state: ",mse)
 
-def train_sequential(model, num_steps=100):
-    loss_array = []
-    mse_array = []
-    for i in range(1000):
-        env = Environment()
-        # Define the optimizer and compile the model
-        optimizer = torch.optim.Adam(model.parameters())
-        model.train()
-        custom_loss = InfromationTheoreticCost(weight=1)
 
-        args = generate_traj(env, model=model, num_steps=num_steps, mode="sequential")
-        loss = custom_loss(args, mode="sequential")
-        loss.requires_grad = True  # add this line
-        print("trajectory average loss is " + (str(loss.item())))
-        optimizer.zero_grad()
-        loss.backward(retain_graph=True)
-        optimizer.step()
-        loss_array.append(loss.item())
-        mse_array.append(args["estimation_mse"])
-    print("trajectory average loss is " + (str(loss.item())))
-    print("the mse loss was:")
-    print(mse_array)
-    print("the trajectory loss was:")
-    print(loss_array)
 if __name__ == '__main__':
     print("Pipeline Start")
 
