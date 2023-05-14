@@ -42,17 +42,19 @@ class Environment:
         self.Estimator = ExtendedKalmanFilter(self.Dynamic_Model)
 
     def Update_state(self,est_state = None, target_state=None,tracker_state=None):
+        def check_equality(object,instances):
+            not_equal = all(elem.any()!=instances[0].any() for elem in instances)
+            if not_equal:
+                string = "the "+object+" State is not equal throughout all Objects "
+                raise ValueError(string)
         if target_state is not None:
             self.target.Update_state(target_state)
             self.tgt_real_traj = torch.cat( [self.tgt_real_traj,target_state[:3, :].unsqueeze(0)], dim = 0)
-            if (target_state.any()!=self.target.state.any() or self.target.state.any() != self.Dynamic_Model.x.any()):
-                raise ValueError("The Target State is not equal throughout all Objects")
-            #self.tgt_real_traj.append(target_state[:3, :])
+            check_equality(object = "Target", instances=[target_state,self.target.state,self.Dynamic_Model.x])
         if tracker_state is not None:
             self.tracker.Update_state(tracker_state)
             self.tracker_traj = torch.cat([self.tracker_traj, tracker_state[:3, :].unsqueeze(0)], dim= 0)
-            if (tracker_state.any() == self.tracker.state.any() ) is False:
-                raise ValueError("The Tracker State is not equal throughout all Objects")
+            check_equality(object="Tracker", instances=[tracker_state, self.tracker.state])
         if est_state is not None:
             self.tgt_est_state = est_state
             self.tgt_est_traj = torch.cat([self.tgt_est_traj, est_state[:3, :].unsqueeze(0)], dim=0)
@@ -124,81 +126,90 @@ class Environment:
                               , tracker_state=self.tracker.next_position(v, heading, tilt))
             return self.Estimator.m2x_posterior, self.Estimator.m2x_prior,self.Estimator.batched_H, self.Estimator.KG
 
-    def train_sequential(self, model, num_steps=10):
+def train(env,model , num_steps=10000):
+    # Define the optimizer and compile the model
+    optimizer = torch.optim.Adam(model.parameters())
+    running_loss = 0.0
+    custom_loss = InfromationTheoreticCost(weight=1)
+    for step in range(num_steps):
+        model.train()
+        args = env.step(mode="train single step")
+        loss = custom_loss(args, mode="single")
+        running_loss += loss.item()
+        optimizer.zero_grad()
+        loss.backward(retain_graph = True)
+        optimizer.step()
+        ###### Control Law ######
+        v, heading, tilt = env.control_step(model =model,module = "mlp")
+
+        ###### Update State ######
+        if (abs(v) or abs(heading) or abs(tilt)) >50 :
+            raise ValueError("Single step trainf: Control decision is out of limits")
+        env.Update_state(est_state = env.Estimator.m1x_posterior,tracker_state = env.tracker.next_position( v, heading, tilt))
+        if step%10 ==0:
+            # Print the average loss for the epoch
+            print("step %d loss: %.3f" % (step + 1, running_loss / (step+1)))
+
+def constant_ctrl_simulation(env, num_steps= 99):
+    # Set up the 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_title("3D Live Simulation")
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
+    for i in range(num_steps):
+        env.step()
+        target_real_traj = env.tgt_real_traj[i].squeeze().tolist()
+        target_est_traj = env.tgt_est_traj[i].squeeze().tolist()
+        tracker_traj = env.tracker_traj[i].squeeze().tolist()
+        target_delta_traj = torch.norm(env.tgt_real_traj[i].squeeze()-env.tgt_est_traj[i].squeeze())
+
+        if target_delta_traj>10:
+            print("large delta")
+        if torch.isnan(target_delta_traj):
+            print("nan")
+
+        # Update the target position on the 3D plot
+        ax.scatter(*target_real_traj, c="r", marker="o", label="Target Real" if i == 0 else "")
+        # Update the target position on the 3D plot
+        ax.scatter(*target_est_traj, c="g", marker="*", label="Target Estimated" if i == 0 else "")
+        # Update the tracker position on the 3D plot
+        ax.scatter(*tracker_traj, c="b", marker="^", label="Tracker" if i == 0 else "")
+
+        # Update the plot every step and pause briefly
+        if i == 0:
+            ax.legend()
+        plt.pause(0.01)
+
+        mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
+        print("Mean Squared Error between est_state and real_state: ",mse)
+
+def train_sequential(model, num_steps=100):
+    loss_array = []
+    mse_array = []
+    for i in range(1000):
+        env = Environment()
         # Define the optimizer and compile the model
         optimizer = torch.optim.Adam(model.parameters())
         model.train()
         custom_loss = InfromationTheoreticCost(weight=1)
-        args = generate_traj(self,model = model, num_steps= num_steps,mode = "sequential")
-        loss = custom_loss(args,mode = "sequential")
-        print("trajectory average loss is "+(str(loss.item())))
+
+        args = generate_traj(env, model=model, num_steps=num_steps, mode="sequential")
+        loss = custom_loss(args, mode="sequential")
+        loss.requires_grad = True  # add this line
+        print("trajectory average loss is " + (str(loss.item())))
         optimizer.zero_grad()
         loss.backward(retain_graph=True)
         optimizer.step()
-
-    def train(self,model , num_steps=10000):
-        # Define the optimizer and compile the model
-        optimizer = torch.optim.Adam(model.parameters())
-        running_loss = 0.0
-        custom_loss = InfromationTheoreticCost(weight=1)
-        for step in range(num_steps):
-            model.train()
-            args = self.step(mode="train single step")
-            loss = custom_loss(args, mode="single")
-            running_loss += loss.item()
-            optimizer.zero_grad()
-            loss.backward(retain_graph = True)
-            optimizer.step()
-            ###### Control Law ######
-            v, heading, tilt = self.control_step(model =model,module = "mlp")
-
-            ###### Update State ######
-            if (abs(v) or abs(heading) or abs(tilt)) >50 :
-                raise ValueError("Single step trainf: Control decision is out of limits")
-            self.Update_state(est_state = self.Estimator.m1x_posterior,tracker_state = self.tracker.next_position( v, heading, tilt))
-            if step%10 ==0:
-                # Print the average loss for the epoch
-                print("step %d loss: %.3f" % (step + 1, running_loss / (step+1)))
-
-    def constant_ctrl_simulation(self, num_steps= 99):
-        # Set up the 3D plot
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection="3d")
-        ax.set_title("3D Live Simulation")
-        ax.set_xlabel("X")
-        ax.set_ylabel("Y")
-        ax.set_zlabel("Z")
-
-        for i in range(num_steps):
-            self.step()
-            target_real_traj = self.tgt_real_traj[i].squeeze().tolist()
-            target_est_traj = self.tgt_est_traj[i].squeeze().tolist()
-            tracker_traj = self.tracker_traj[i].squeeze().tolist()
-            target_delta_traj = torch.norm(self.tgt_real_traj[i].squeeze()-self.tgt_est_traj[i].squeeze())
-
-            if target_delta_traj>10:
-                print("large delta")
-            if torch.isnan(target_delta_traj):
-                print("nan")
-
-            # Update the target position on the 3D plot
-            ax.scatter(*target_real_traj, c="r", marker="o", label="Target Real" if i == 0 else "")
-            # Update the target position on the 3D plot
-            ax.scatter(*target_est_traj, c="g", marker="*", label="Target Estimated" if i == 0 else "")
-            # Update the tracker position on the 3D plot
-            ax.scatter(*tracker_traj, c="b", marker="^", label="Tracker" if i == 0 else "")
-
-            # Update the plot every step and pause briefly
-            if i == 0:
-                ax.legend()
-            plt.pause(0.01)
-
-            mse = estimation_mse_loss(self.tgt_est_traj, self.tgt_real_traj)
-            print("Mean Squared Error between est_state and real_state: ",mse)
-
-        # Keep the plot open after the simulation
-        #plt.show()
-
+        loss_array.append(loss.item())
+        mse_array.append(args["estimation_mse"])
+    print("trajectory average loss is " + (str(loss.item())))
+    print("the mse loss was:")
+    print(mse_array)
+    print("the trajectory loss was:")
+    print(loss_array)
 if __name__ == '__main__':
     print("Pipeline Start")
 
@@ -209,11 +220,10 @@ if __name__ == '__main__':
     strTime = strToday + "_" + strNow
     print("Current Time =", strTime)
 
-    env = Environment()
+
     model = MLP()
     model.initialize_weights()
-
-    env.train_sequential(model, num_steps=1000)
+    train_sequential(model, num_steps=100)
     #env.train(model)
     #env.generate_simulation(num_steps=1000)
 

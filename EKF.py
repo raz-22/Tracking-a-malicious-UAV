@@ -43,14 +43,9 @@ class ExtendedKalmanFilter:
         ####### Only For TEST Purposes ####
         ###################################
         # Check if all eigenvalues are non-negative
-        symetric = is_symetric(self.m2x_prior)
-        psd, symetric_2 = is_psd((torch.inverse(self.m2x_prior))[:3, :3])
+        symetric = is_symetric(mat = self.m2x_prior,name="m2x_prior",stage="EKF",iteration=self.step)
+        psd, symetric_2 = is_psd(mat =self.m2x_prior,name="m2x_prior",stage="EKF",iteration=self.step)
 
-        # Print result
-        if not symetric:
-            raise ValueError("EKF: step: " + str(self.step) + " the prior matrix is not symetric")
-        if not psd:
-            raise ValueError("EKF: step: " + str(self.step) + " The prior matrix is not positive semi-definite.")
         ###################################
 
         # Predict the 1-st moment of y
@@ -78,36 +73,15 @@ class ExtendedKalmanFilter:
         if self.KG.dim() == 2:
             self.m2x_posterior = torch.matmul(self.m2y, torch.transpose(self.KG, 0, 1))
             self.m2x_posterior = self.m2x_prior - torch.matmul(self.KG, self.m2x_posterior)
-            print("m2x_prior")
-            print(self.m2x_prior)
-            print("H jacobian:")
-            print(self.batched_H)
-            print("R:")
-            print(self.R)
-            print("m2y:")
-            print(self.m2y)
-            print("H T jacobian:")
-            print(self.batched_H_T)
-            print("KG:")
-            print(self.KG)
-            print("m2x_posterior:")
-            print(self.m2x_posterior)
             ###################################
             ####### Only For TEST Purposes ####
             ###################################
             # Check if all eigenvalues are non-negative
-            postsymetric=is_symetric(self.m2x_posterior)
-            symetric = bool(torch.equal(self.m2x_posterior, self.m2x_posterior.T))
-            print(self.m2x_posterior-self.m2x_posterior.T)
+            self.m2x_posterior = 0.5 * (self.m2x_posterior + self.m2x_posterior.T)
+            print("m2x_posterior eigenvalues:")
             print(torch.linalg.eig(self.m2x_posterior).eigenvalues)
-
-            postpsd,postsymetric_2 = is_psd((torch.inverse(self.m2x_posterior))[:3, :3])
-            # Print result
-            if not postsymetric:
-                raise ValueError("EKF: step: " +str(self.step)+" The posterior matrix is not symetric")
-            if not postpsd:
-                raise ValueError("EKF: step: " +str(self.step)+" The posterior matrix is not positive semi-definite.")
-
+            posterior_psd, posterior_symmetric = is_psd(mat = self.m2x_posterior,name="m2x_posterior",stage="EKF",iteration=self.step)
+            ###################################
         else:
             self.m2x_posterior = torch.bmm(self.m2y, torch.transpose(self.KG, 0, 1))
             self.m2x_posterior = self.m2x_prior - torch.bmm(self.KG, self.m2x_posterior)
@@ -119,9 +93,6 @@ class ExtendedKalmanFilter:
         self.KGain()
         self.Innovation(y)
         self.Correct()
-
-
-    #########################
 
     def UpdateJacobians(self, F, H):
         if F.dim()==4:
