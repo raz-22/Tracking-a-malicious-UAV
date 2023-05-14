@@ -78,8 +78,8 @@ class ExtendedKalmanFilter:
             ###################################
             # Check if all eigenvalues are non-negative
             self.m2x_posterior = 0.5 * (self.m2x_posterior + self.m2x_posterior.T)
-            print("m2x_posterior eigenvalues:")
-            print(torch.linalg.eig(self.m2x_posterior).eigenvalues)
+            # print("m2x_posterior eigenvalues:")
+            # print(torch.linalg.eig(self.m2x_posterior).eigenvalues)
             posterior_psd, posterior_symmetric = is_psd(mat = self.m2x_posterior,name="m2x_posterior",stage="EKF",iteration=self.step)
             ###################################
         else:
