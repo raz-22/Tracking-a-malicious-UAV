@@ -186,28 +186,28 @@ def constant_ctrl_simulation(env, num_steps= 99):
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
         print("Mean Squared Error between est_state and real_state: ",mse)
 
-
-if __name__ == '__main__':
-    print("Pipeline Start")
-
-    today = datetime.today()
-    now = datetime.now()
-    strToday = today.strftime("%m.%d.%y")
-    strNow = now.strftime("%H:%M:%S")
-    strTime = strToday + "_" + strNow
-    print("Current Time =", strTime)
-
-
-    model = MLP()
-    model.initialize_weights()
-    train_sequential(model, num_steps=100)
-    #env.train(model)
-    #env.generate_simulation(num_steps=1000)
-
-    print("Pipeline Ends")
-    today = datetime.today()
-    now = datetime.now()
-    strToday = today.strftime("%m.%d.%y")
-    strNow = now.strftime("%H:%M:%S")
-    strTime = strToday + "_" + strNow
-    print("Current Time =", strTime)
+#
+# if __name__ == '__main__':
+#     print("Pipeline Start")
+#
+#     today = datetime.today()
+#     now = datetime.now()
+#     strToday = today.strftime("%m.%d.%y")
+#     strNow = now.strftime("%H:%M:%S")
+#     strTime = strToday + "_" + strNow
+#     print("Current Time =", strTime)
+#
+#
+#     model = MLP()
+#     model.initialize_weights()
+#     train_sequential(model, num_steps=100)
+#     #env.train(model)
+#     #env.generate_simulation(num_steps=1000)
+#
+#     print("Pipeline Ends")
+#     today = datetime.today()
+#     now = datetime.now()
+#     strToday = today.strftime("%m.%d.%y")
+#     strNow = now.strftime("%H:%M:%S")
+#     strTime = strToday + "_" + strNow
+#     print("Current Time =", strTime)
