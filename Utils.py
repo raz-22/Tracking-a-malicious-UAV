@@ -23,8 +23,7 @@ def generate_traj(environment,model, num_steps,mode = "sequential"):
         KG_batch = torch.zeros(num_steps,m,n)
         running_loss=0
         for step in range(num_steps):
-            m2x_posterior_batch[step],m2x_prior_batch[step],
-            jac_H_batch[step], KG_batch[step] = environment.step(model = model, mode ="train_sequential", step=step)
+            m2x_posterior_batch[step],m2x_prior_batch[step],jac_H_batch[step], KG_batch[step] = environment.step(model = model, mode ="train_sequential", step=step)
         return {"m2x_posterior":m2x_posterior_batch,"m2x_prior":m2x_prior_batch, "jac_H":jac_H_batch,"KG": KG_batch}
     if mode == "batch_sequential":
         pass

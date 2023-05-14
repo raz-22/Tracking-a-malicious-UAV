@@ -44,7 +44,7 @@ delta_t = 1
 ### Initial State & Observation Noise Covariance ###
 def Init_Cov_Matrix():
     # Calculating the noise covariance matrix , constants are from the use case in the original paper
-    diagonal = [1e-5, 1e-5, 1e-6]
+    diagonal = [1e-1, 1e-1, 1e-1]
     diagonal_matrix = torch.diag(torch.tensor(diagonal))
     A = ((delta_t ** 3) / 3) * diagonal_matrix
     B = ((delta_t ** 2) / 2) * diagonal_matrix
@@ -53,7 +53,7 @@ def Init_Cov_Matrix():
     top = torch.cat((A, B), dim=1)
     bottom = torch.cat((C, D), dim=1)
     Q = torch.cat((top, bottom), dim=0)
-    diagonal = [1e-5, 1e-5, 1e-6, 1e-6]
+    diagonal = [1e-1, 1e-1, 1e-1, 1e-1]
     diagonal_matrix = torch.diag(torch.tensor(diagonal))
     R = torch.eye(n) * diagonal_matrix
     if is_symetric(R) == False:
