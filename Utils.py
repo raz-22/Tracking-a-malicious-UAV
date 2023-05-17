@@ -89,3 +89,30 @@ def estimation_mse_loss(tgt_est_traj, tgt_real_traj):
     if tgt_est_traj.shape != tgt_real_traj.shape:
         raise ValueError("The shapes of the estimated and real trajectories must match.")
     return torch.mean(torch.square(tgt_est_traj - tgt_real_traj)).item()
+
+def plot_loss_steps(steps, losses):
+    # Iterate over each list in losses
+    for name, loss in losses:
+        # Plot the data
+        plt.plot(steps, loss, label=name)
+
+    # Label the axes and add legend
+    plt.xlabel('Number of Steps')
+    plt.ylabel('Loss')
+    plt.title('Loss vs Number of Steps')
+    plt.legend()
+
+    # Display the plot
+    plt.show()
+
+def plot_mse_steps(steps, mse):
+    # Plot the data
+    plt.plot(steps, mse)
+
+    # Label the axes
+    plt.xlabel('Number of Steps')
+    plt.ylabel('MSE')
+    plt.title('MSE vs Number of Steps')
+
+    # Display the plot
+    plt.show()

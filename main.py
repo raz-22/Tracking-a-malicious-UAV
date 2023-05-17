@@ -192,31 +192,6 @@ def constant_ctrl_simulation(env, num_steps=99):
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
         print("Mean Squared Error between est_state and real_state: ",mse)
 
-def plot_mse_steps(steps, mse):
-    # Plot the data
-    plt.plot(steps, mse)
-
-    # Label the axes
-    plt.xlabel('Number of Steps')
-    plt.ylabel('MSE')
-    plt.title('MSE vs Number of Steps')
-
-    # Display the plot
-    plt.show()
-def plot_loss_steps(steps, losses):
-    # Iterate over each list in losses
-    for name, loss in losses:
-        # Plot the data
-        plt.plot(steps, loss, label=name)
-
-    # Label the axes and add legend
-    plt.xlabel('Number of Steps')
-    plt.ylabel('Loss')
-    plt.title('Loss vs Number of Steps')
-    plt.legend()
-
-    # Display the plot
-    plt.show()
 
 def train_sequential(model, num_steps=100):
     loss_array = []
