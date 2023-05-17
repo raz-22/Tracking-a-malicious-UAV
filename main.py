@@ -143,6 +143,7 @@ def train(env,model , num_steps=10000):
     for step in range(num_steps):
         model.train()
         args = env.step(mode="train single step")
+
         loss = custom_loss(args, mode="single")
         running_loss += loss.item()
         optimizer.zero_grad()
@@ -151,9 +152,9 @@ def train(env,model , num_steps=10000):
         ###### Control Law ######
         v, heading, tilt = env.control_step(model =model,module = "model")
 
-        ###### Update State ######
-        if (abs(v) or abs(heading) or abs(tilt)) >50 :
-            raise ValueError("Single step trainf: Control decision is out of limits")
+        # ###### Update State ######
+        # if (abs(v) or abs(heading) or abs(tilt)) >50 :
+        #     raise ValueError("Single step trainf: Control decision is out of limits")
         env.Update_state(est_state = env.Estimator.m1x_posterior,tracker_state = env.tracker.next_position( v, heading, tilt))
         if step%10 ==0:
             # Print the average loss for the epoch
@@ -201,28 +202,28 @@ def constant_ctrl_simulation(env, num_steps=99):
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
         print("Mean Squared Error between est_state and real_state: ",mse)
 
-#
-# if __name__ == '__main__':
-#     print("Pipeline Start")
-#
-#     today = datetime.today()
-#     now = datetime.now()
-#     strToday = today.strftime("%m.%d.%y")
-#     strNow = now.strftime("%H:%M:%S")
-#     strTime = strToday + "_" + strNow
-#     print("Current Time =", strTime)
-#
-#
-#     model = MLP()
-#     model.initialize_weights()
-#     train_sequential(model, num_steps=100)
-#     #env.train(model)
-#     #env.generate_simulation(num_steps=1000)
-#
-#     print("Pipeline Ends")
-#     today = datetime.today()
-#     now = datetime.now()
-#     strToday = today.strftime("%m.%d.%y")
-#     strNow = now.strftime("%H:%M:%S")
-#     strTime = strToday + "_" + strNow
-#     print("Current Time =", strTime)
+
+if __name__ == '__main__':
+    print("Pipeline Start")
+    env = Environment()
+    today = datetime.today()
+    now = datetime.now()
+    strToday = today.strftime("%m.%d.%y")
+    strNow = now.strftime("%H:%M:%S")
+    strTime = strToday + "_" + strNow
+    print("Current Time =", strTime)
+
+
+    #model = MLP()
+    #model.initialize_weights()
+    #train_sequential(model, num_steps=100)
+    #env.train(model)
+    constant_ctrl_simulation(env,num_steps=1000)
+
+    print("Pipeline Ends")
+    today = datetime.today()
+    now = datetime.now()
+    strToday = today.strftime("%m.%d.%y")
+    strNow = now.strftime("%H:%M:%S")
+    strTime = strToday + "_" + strNow
+    print("Current Time =", strTime)

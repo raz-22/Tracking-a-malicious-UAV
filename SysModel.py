@@ -79,7 +79,7 @@ class SystemModel:
         mean = torch.zeros([self.n])
 
         los = xt[:3, 0] - tracker_state[:3, 0]
-        d_4 =(torch.norm(los))**4
+        d_4 =(torch.norm(los))
         diagonal = [d_4, d_4, d_4, d_4]
         diagonal_matrix = torch.diag(torch.tensor(diagonal))
         R = torch.eye(4) * diagonal_matrix
