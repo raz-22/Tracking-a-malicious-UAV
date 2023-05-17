@@ -5,11 +5,12 @@ class ElmanRNN(nn.Module):
     def __init__(self, input_size=12, hidden_size=64, output_size=3):
         super(ElmanRNN, self).__init__()
         self.hidden_size = hidden_size
+        self.input_size=input_size
         self.rnn = nn.RNN(input_size, hidden_size, batch_first=False)
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, target_state, tracker_state):
-        x = torch.cat((target_state.squeeze(), tracker_state.squeeze()), dim=0).reshape(1,1,input_size)
+        x = torch.cat((target_state.squeeze(), tracker_state.squeeze()), dim=0).reshape(1,1,self.input_size)
         hidden = self.init_hidden(1)  # Set batch size to 1
         output, _ = self.rnn(x, hidden)
         output = output[:, -1, :]  # Taking the last time step output
