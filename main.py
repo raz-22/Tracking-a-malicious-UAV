@@ -87,7 +87,14 @@ class Environment:
             #####################################
             #####################################
             return torch.tensor(100), torch.tensor(50), torch.tensor(50)
-
+        elif module =="random":
+            #####################################
+            ####  Calculate Gradient on Cost  ###
+            #####################################
+            #####################################
+            # random (0.5<v<>1), (0<azimuth<50) , (0<elevation<50)
+            #return torch.tensor(100), torch.tensor(50), torch.tensor(50)
+            pass
     def step(self, model = None, mode = "test", step=0):
         """
         Executing one time step of our Simulator
