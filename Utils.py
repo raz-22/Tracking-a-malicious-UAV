@@ -25,6 +25,13 @@ def is_psd(mat, name="mat:", stage="unkown",iteration=0):
     return psd, symetric
 
 
+def UpdateAllCovariance_Matrix(env, Q, R):
+    env.Q = Q
+    env.R = R
+    env.Estimator.Q = Q
+    env.Estimator.R = R
+
+
 def generate_traj(environment,model, num_steps,mode = "sequential"):
     if mode == "sequential":
         m2x_prior_batch, m2x_posterior_batch, jac_H_batch, KG_batch = [torch.zeros(num_steps, *size) for size in
@@ -35,7 +42,7 @@ def generate_traj(environment,model, num_steps,mode = "sequential"):
         KG_batch = torch.zeros(num_steps,m,n)
         running_loss=0
         for step in range(num_steps):
-            m2x_posterior_batch[step],m2x_prior_batch[step],jac_H_batch[step], KG_batch[step] = environment.step(model = model, mode ="train_sequential", step=step)
+            m2x_posterior_batch[step],m2x_prior_batch[step],jac_H_batch[step], KG_batch[step] = environment .step(model = model, mode ="train_sequential", step=step)
             mse = estimation_mse_loss(environment.tgt_est_traj, environment.tgt_real_traj)
         return {"m2x_posterior":m2x_posterior_batch,"m2x_prior":m2x_prior_batch, "jac_H":jac_H_batch,"KG": KG_batch,"estimation_mse": mse}
     if mode == "batch_sequential":
@@ -71,7 +78,6 @@ class InfromationTheoreticCost(nn.Module):
             ln_det_cost = -torch.log(det)
             loss = torch.mean(ln_det_cost)
             return loss, ln_det_cost
-
         if mode == "batch_sequential":
             pass
 

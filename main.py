@@ -109,7 +109,9 @@ class Environment:
         :rtype: .
         """
         ##  Step & Observation ##
-        self.Dynamic_Model.GenerateStep(tracker_state=self.tracker.state)
+        Q, R = self.Dynamic_Model.GenerateStep(tracker_state=self.tracker.state)
+        UpdateAllCovariance_Matrix(self, Q, R)
+
         self.Update_state(target_state=self.Dynamic_Model.x)
 
         ### State Estimation ###

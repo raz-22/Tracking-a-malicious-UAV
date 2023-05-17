@@ -30,6 +30,10 @@ class ExtendedKalmanFilter:
         # self.T = SystemModel.T
         # self.T_test = SystemModel.T_test
 
+    def UpdateCovariance_Matrix(self, Q, R):
+        self.Q = Q
+
+        self.R = R
     # Predict
     def Predict(self , tracker_state):
         # Predict the 1-st moment of x

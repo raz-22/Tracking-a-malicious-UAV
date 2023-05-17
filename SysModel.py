@@ -25,6 +25,10 @@ class SystemModel:
         self.T = T
         self.T_test = T_test
 
+    def UpdateCovariance_Matrix(self, Q, R):
+        self.Q = Q
+
+        self.R = R
 
 
     #####################
@@ -73,6 +77,16 @@ class SystemModel:
         # yt = h(y)+n  #
         yt = self.h(xt, tracker_state)
         mean = torch.zeros([self.n])
+
+        los = xt[:3, 0] - tracker_state[:3, 0]
+        d_4 =(torch.norm(los))**4
+        diagonal = [d_4, d_4, d_4, d_4]
+        diagonal_matrix = torch.diag(torch.tensor(diagonal))
+        R = torch.eye(4) * diagonal_matrix
+        self.UpdateCovariance_Matrix(self.Q, R)
+
+
+
         distrib = MultivariateNormal(loc=mean, covariance_matrix=self.R )
         er = distrib.rsample()
         er = torch.reshape(er[:], yt.size())
@@ -91,3 +105,4 @@ class SystemModel:
         ### Save Current to Previous ###
         ################################
         self.x_prev = xt
+        return self.Q, R
