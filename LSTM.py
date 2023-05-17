@@ -9,7 +9,7 @@ class ElmanLSTM(nn.Module):
         self.fc = nn.Linear(hidden_size, output_size)
         self.input_size = input_size
     def forward(self, target_state, tracker_state):
-        x = torch.cat((target_state.squeeze(), tracker_state.squeeze()), dim=0).reshape(1,1,self.input_size)
+        x = torch.cat((target_state.squeeze(), tracker_state.squeeze()), dim=0).reshape(1,1,12)
         hidden = self.init_hidden(1)  # Set batch size to 1
         _, (output, _) = self.lstm(x, hidden)
         output = output.squeeze(0)
