@@ -60,7 +60,7 @@ class Environment:
             self.tgt_est_traj = torch.cat([self.tgt_est_traj, est_state[:3, :].unsqueeze(0)], dim=0)
 
 
-    def control_step(self,model = None ,module = "mlp"):
+    def control_step(self,model = None ,module = "model"):
         """
         The Tracking UAV control module.
         Decides the next velocity, azimuth & elevation based on Target State Estimation .
@@ -78,7 +78,7 @@ class Environment:
         #####################################
         ##  Use selected Decision Module   ##
         #####################################
-        if module == "mlp":
+        if module == "model":
             navigation_decision = model.forward(self.target.state,self.tracker.state)
             return navigation_decision[0],navigation_decision[1],navigation_decision[2]
         elif module =="fixed":
@@ -128,7 +128,7 @@ class Environment:
             return {"m2x_prior": self.Estimator.m2x_prior, "jac_H": self.Estimator.batched_H, "R": self.R}
         elif mode == "train_sequential":
             ###### Control Law ######
-            v, heading, tilt = self.control_step(model= model, module="mlp")
+            v, heading, tilt = self.control_step(model= model, module="model")
 
             ###### Update State ######
             self.Update_state(est_state=self.Estimator.m1x_posterior
@@ -149,7 +149,7 @@ def train(env,model , num_steps=10000):
         loss.backward(retain_graph = True)
         optimizer.step()
         ###### Control Law ######
-        v, heading, tilt = env.control_step(model =model,module = "mlp")
+        v, heading, tilt = env.control_step(model =model,module = "model")
 
         ###### Update State ######
         if (abs(v) or abs(heading) or abs(tilt)) >50 :
