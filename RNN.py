@@ -9,7 +9,7 @@ class ElmanRNN(nn.Module):
         self.fc = nn.Linear(hidden_size, output_size)
 
     def forward(self, target_state, tracker_state):
-        x = torch.cat((target_state.squeeze(), tracker_state.squeeze()), dim=0).reshape(1,1,12)
+        x = torch.cat((target_state.squeeze(), tracker_state.squeeze()), dim=0).reshape(1,1,input_size)
         hidden = self.init_hidden(1)  # Set batch size to 1
         output, _ = self.rnn(x, hidden)
         output = output[:, -1, :]  # Taking the last time step output
