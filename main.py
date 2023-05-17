@@ -157,7 +157,7 @@ def train(env,model , num_steps=10000):
             # Print the average loss for the epoch
             print("step %d loss: %.3f" % (step + 1, running_loss / (step+1)))
 
-def constant_ctrl_simulation(env, num_steps= 99):
+def constant_ctrl_simulation(env, num_steps=99):
     # Set up the 3D plot
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
@@ -167,6 +167,13 @@ def constant_ctrl_simulation(env, num_steps= 99):
     ax.set_zlabel("Z")
 
     for i in range(num_steps):
+        # Clear the plot at the start of each step
+        ax.clear()
+        ax.set_title("3D Live Simulation")
+        ax.set_xlabel("X")
+        ax.set_ylabel("Y")
+        ax.set_zlabel("Z")
+
         env.step()
         target_real_traj = env.tgt_real_traj[i].squeeze().tolist()
         target_est_traj = env.tgt_est_traj[i].squeeze().tolist()
@@ -179,15 +186,14 @@ def constant_ctrl_simulation(env, num_steps= 99):
             print("nan")
 
         # Update the target position on the 3D plot
-        ax.scatter(*target_real_traj, c="r", marker="o", label="Target Real" if i == 0 else "")
+        ax.scatter(*target_real_traj, c="r", marker="o", label="Target Real")
         # Update the target position on the 3D plot
-        ax.scatter(*target_est_traj, c="g", marker="*", label="Target Estimated" if i == 0 else "")
+        ax.scatter(*target_est_traj, c="g", marker="*", label="Target Estimated")
         # Update the tracker position on the 3D plot
-        ax.scatter(*tracker_traj, c="b", marker="^", label="Tracker" if i == 0 else "")
+        ax.scatter(*tracker_traj, c="b", marker="^", label="Tracker")
 
         # Update the plot every step and pause briefly
-        if i == 0:
-            ax.legend()
+        ax.legend()
         plt.pause(0.01)
 
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
