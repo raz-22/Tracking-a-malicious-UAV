@@ -1,4 +1,4 @@
-import matplotlib; matplotlib.use("TkAgg")
+#import matplotlib; matplotlib.use("TkAgg")
 import torch
 import torch.nn as nn
 from Parameters import m, n
