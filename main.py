@@ -15,7 +15,7 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
 from EKF import ExtendedKalmanFilter
 from MLP import MLP
-"seee i did push"
+
 class Environment:
     def __init__(self):
         ###Init UAV Objects ###
