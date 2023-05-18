@@ -100,8 +100,11 @@ class Environment:
             ####  Calculate Gradient on Cost  ###
             #####################################
             #####################################
-            # random (0.5<v<>1), (0<azimuth<50) , (0<elevation<50)
-            #return torch.tensor(100), torch.tensor(50), torch.tensor(50)
+            v = torch.rand(1) * 0.5 + 0.5  # Generate a random float between 0.5 and 1
+            azimuth = torch.rand(1) * 50  # Generate a random float between 0 and 50
+            elevation = torch.rand(1) * 50  # Generate a random float between 0 and 50
+            return v, azimuth, elevation
+
             pass
     def step(self, model = None, mode = "test", step=0,memory=False):
         """
