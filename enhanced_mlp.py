@@ -5,7 +5,7 @@ import torch.nn.init as init
 
 class MLP_memory(nn.Module):
     def __init__(self, hidden_size=64):
-        super(MLP, self).__init__()
+        super(MLP_memory, self).__init__()
 
         self.hidden_size = hidden_size
 
