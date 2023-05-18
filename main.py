@@ -83,7 +83,10 @@ class Environment:
             navigation_decision = model.forward(self.target.state,self.tracker.state)
             return navigation_decision[0],navigation_decision[1],navigation_decision[2]
         elif module == "memory_model":
-            memory_state = self.tgt_est_state_traj[-1,:,:]
+            if self.tgt_est_state_traj.size(0) == 0:
+                memory_state = torch.zeros(6,1)
+            else:
+                memory_state = self.tgt_est_state_traj[-1,:,:]
             navigation_decision = model.forward(self.target.state,memory_state,self.tracker.state)
             return navigation_decision[0],navigation_decision[1],navigation_decision[2]
         elif module =="fixed":
