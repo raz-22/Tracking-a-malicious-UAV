@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.init as init
 
 
-class MLP(nn.Module):
+class MLP_memory(nn.Module):
     def __init__(self, hidden_size=64):
         super(MLP, self).__init__()
 
