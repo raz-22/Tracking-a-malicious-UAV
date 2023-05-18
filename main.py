@@ -28,6 +28,7 @@ class Environment:
         self.tgt_real_traj = torch.empty((0,3,1))
         self.tracker_traj = torch.empty((0,3,1))
         self. tgt_est_traj = torch.empty((0,3,1))
+        self.tgt_est_state_traj = torch.empty((0, 6, 1))
 
         ### Dynamic Model ###
         self.delta_t = 1
@@ -58,7 +59,7 @@ class Environment:
         if est_state is not None:
             self.tgt_est_state = est_state
             self.tgt_est_traj = torch.cat([self.tgt_est_traj, est_state[:3, :].unsqueeze(0)], dim=0)
-
+            self.tgt_est_state_traj = torch.cat([self.tgt_est_state_traj,est_state[:, :].unsqueeze(0)], dim=0)
 
     def control_step(self,model = None ,module = "model"):
         """
@@ -80,6 +81,10 @@ class Environment:
         #####################################
         if module == "model":
             navigation_decision = model.forward(self.target.state,self.tracker.state)
+            return navigation_decision[0],navigation_decision[1],navigation_decision[2]
+        elif module == "memory_model":
+            memory_state = self.tgt_est_state_traj[-1,:,:]
+            navigation_decision = model.forward(self.target.state,memory_state,self.tracker.state)
             return navigation_decision[0],navigation_decision[1],navigation_decision[2]
         elif module =="fixed":
             #####################################
@@ -127,8 +132,13 @@ class Environment:
         elif mode == "train single step":
             return {"m2x_prior": self.Estimator.m2x_prior, "jac_H": self.Estimator.batched_H, "R": self.R}
         elif mode == "train_sequential":
-            ###### Control Law ######
-            v, heading, tilt = self.control_step(model= model, module="model")
+            if "memory"==True:
+                ###### Control Law ######
+                v, heading, tilt = self.control_step(model= model, module="memory_model")
+            else:
+                ###### Control Law ######
+                v, heading, tilt = self.control_step(model= model, module="model")
+
 
             ###### Update State ######
             self.Update_state(est_state=self.Estimator.m1x_posterior
@@ -202,28 +212,28 @@ def constant_ctrl_simulation(env, num_steps=99):
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
         print("Mean Squared Error between est_state and real_state: ",mse)
 
-#
-# if __name__ == '__main__':
-#     print("Pipeline Start")
-#     env = Environment()
-#     today = datetime.today()
-#     now = datetime.now()
-#     strToday = today.strftime("%m.%d.%y")
-#     strNow = now.strftime("%H:%M:%S")
-#     strTime = strToday + "_" + strNow
-#     print("Current Time =", strTime)
-#
-#
-#     #model = MLP()
-#     #model.initialize_weights()
-#     #train_sequential(model, num_steps=100)
-#     #env.train(model)
-#     constant_ctrl_simulation(env,num_steps=1000)
-#
-#     print("Pipeline Ends")
-#     today = datetime.today()
-#     now = datetime.now()
-#     strToday = today.strftime("%m.%d.%y")
-#     strNow = now.strftime("%H:%M:%S")
-#     strTime = strToday + "_" + strNow
-#     print("Current Time =", strTime)
+
+if __name__ == '__main__':
+    print("Pipeline Start")
+    env = Environment()
+    today = datetime.today()
+    now = datetime.now()
+    strToday = today.strftime("%m.%d.%y")
+    strNow = now.strftime("%H:%M:%S")
+    strTime = strToday + "_" + strNow
+    print("Current Time =", strTime)
+
+
+    #model = MLP()
+    #model.initialize_weights()
+    #train_sequential(model, num_steps=100)
+    #env.train(model)
+    constant_ctrl_simulation(env,num_steps=1000)
+
+    print("Pipeline Ends")
+    today = datetime.today()
+    now = datetime.now()
+    strToday = today.strftime("%m.%d.%y")
+    strNow = now.strftime("%H:%M:%S")
+    strTime = strToday + "_" + strNow
+    print("Current Time =", strTime)
