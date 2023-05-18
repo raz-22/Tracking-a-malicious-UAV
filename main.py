@@ -103,7 +103,7 @@ class Environment:
             # random (0.5<v<>1), (0<azimuth<50) , (0<elevation<50)
             #return torch.tensor(100), torch.tensor(50), torch.tensor(50)
             pass
-    def step(self, model = None, mode = "test", step=0):
+    def step(self, model = None, mode = "test", step=0,memory=False):
         """
         Executing one time step of our Simulator
 
@@ -135,7 +135,7 @@ class Environment:
         elif mode == "train single step":
             return {"m2x_prior": self.Estimator.m2x_prior, "jac_H": self.Estimator.batched_H, "R": self.R}
         elif mode == "train_sequential":
-            if "memory"==True:
+            if memory==True:
                 ###### Control Law ######
                 v, heading, tilt = self.control_step(model= model, module="memory_model")
             else:
