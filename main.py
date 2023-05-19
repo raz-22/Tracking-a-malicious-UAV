@@ -15,7 +15,8 @@ from matplotlib.animation import FuncAnimation
 from mpl_toolkits import mplot3d
 from EKF import ExtendedKalmanFilter
 from MLP import MLP
-
+import enhanced_mlp
+from enhanced_mlp import *
 class Environment:
     def __init__(self):
         ###Init UAV Objects ###
@@ -217,24 +218,57 @@ def constant_ctrl_simulation(env, num_steps=99):
 
         mse = estimation_mse_loss(env.tgt_est_traj, env.tgt_real_traj)
         print("Mean Squared Error between est_state and real_state: ",mse)
-
+# def train_sequential(model, optimizer, trajectory_size=30, interval=5, epochs=20000,
+#                      return_graph_stats=True, model_memory=False,lr=0.003):
 #
+#     loss_train_l = []
+#     mse_l = []
+#     for epoch in range(epochs):
+#         # measure data loading time
+#
+#         model.train()
+#         env = Environment()
+#         # Define the optimizer and compile the model
+#         # optimizer = torch.optim.Adam(model.parameters())
+#         # -- get optimizer
+#
+#         custom_loss = InfromationTheoreticCost(weight=1)
+#         args = generate_traj(env, model, trajectory_size, "sequential", model_memory)
+#         loss, loss_l = custom_loss(args, mode="sequential")
+#         # pdb.set_trace()
+#         loss.requires_grad = True  # add this line
+#         optimizer.zero_grad()
+#
+#         loss.backward(retain_graph=True)
+#         optimizer.step()
+#         epoch += 1
+#         # -- log intermediate results
+#         if epoch % interval == 0 or (epoch == epochs - 1):
+#             loss_train_l.append(loss.item())
+#             mse_l.append(args["estimation_mse"])
+#             if (epoch == epochs - 1):
+#                 loss_train_l.append(loss.item())
+#     if (return_graph_stats == True):
+#         last_traj_loss_l = loss_l
+#         return model, loss_train_l, mse_l, last_traj_loss_l
+#     else:
+#         return model
+# #
 # if __name__ == '__main__':
+#
 #     print("Pipeline Start")
-#     env = Environment()
 #     today = datetime.today()
 #     now = datetime.now()
 #     strToday = today.strftime("%m.%d.%y")
 #     strNow = now.strftime("%H:%M:%S")
 #     strTime = strToday + "_" + strNow
 #     print("Current Time =", strTime)
-#
-#
-#     #model = MLP()
-#     #model.initialize_weights()
-#     #train_sequential(model, num_steps=100)
+#     mlp_memory = MLP_memory()
+#     optimizer = torch.optim.AdamW(mlp_memory.parameters(), lr=0.003, weight_decay=1e-2)
+#     mlp_memory.initialize_weights()
+#     mlp_memory_model,mlp_memory_loss_train_lmlp_memory_mse_l,mlp_mem_last_traj_loss_l = train_sequential(model=mlp_memory,optimizer=optimizer,model_memory=True)
 #     #env.train(model)
-#     constant_ctrl_simulation(env,num_steps=1000)
+#     #env.generate_simulation(num_steps=1000)
 #
 #     print("Pipeline Ends")
 #     today = datetime.today()

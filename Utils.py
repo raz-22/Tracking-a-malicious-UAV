@@ -34,6 +34,7 @@ def UpdateAllCovariance_Matrix(env, Q, R):
 
 def generate_traj(environment,model, num_steps,mode = "sequential",memory=False):
     if mode == "sequential":
+        print("newst git push proof")
         m2x_prior_batch, m2x_posterior_batch, jac_H_batch, KG_batch = [torch.zeros(num_steps, *size) for size in
                                                                        [(m, m), (m, m), (n, m), (m, n)]]
         # m2x_prior_batch = torch.zeros(num_steps,m,m)
