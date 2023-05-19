@@ -76,7 +76,9 @@ class InfromationTheoreticCost(nn.Module):
             inf_theor_cost = (torch.inverse(args["m2x_posterior"]))[:,:3, :3]
             det = torch.linalg.det(inf_theor_cost)
             ln_det_cost = -torch.log(det)
-            loss = torch.mean(ln_det_cost)
+            weights = torch.arange(1, ln_det_cost.size(0) + 1).float()
+            weighted_ln_det_cost = ln_det_cost * weights
+            loss = torch.mean(weighted_ln_det_cost)
             return loss, ln_det_cost
         if mode == "batch_sequential":
             pass

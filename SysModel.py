@@ -79,8 +79,8 @@ class SystemModel:
         mean = torch.zeros([self.n])
 
         los = xt[:3, 0] - tracker_state[:3, 0]
-        d_4 =((torch.norm(los))**4)*1e-2
-        diagonal = [d_4, d_4, d_4, d_4]
+        d_root =((torch.norm(los))**(0.5))*1e-2
+        diagonal = [d_root, d_root, d_root, d_root]
         diagonal_matrix = torch.diag(torch.tensor(diagonal))
         R = torch.eye(4) * diagonal_matrix
         self.UpdateCovariance_Matrix(self.Q, R)
